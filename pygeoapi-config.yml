@@ -94,4 +94,4 @@ resources:
     invest:
         type: process
         processor:
-            name: invest_processes.processes.MyCoolSqrtProcessor
+            name: invest_processes.execute.ExecuteProcessor

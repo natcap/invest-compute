@@ -6,7 +6,7 @@ APIs and backend for running invest in the cloud
 To launch the server:
 ```
 export PYGEOAPI_CONFIG=pygeoapi-config.yml
-export PYGEOAPI_OPENAPI=example-openapi.yml
+export PYGEOAPI_OPENAPI=openapi.yml
 pygeoapi openapi generate $PYGEOAPI_CONFIG --output-file $PYGEOAPI_OPENAPI
 pygeoapi serve
 ```
