@@ -90,3 +90,8 @@ resources:
         type: process
         processor:
             name: HelloWorld
+
+    invest:
+        type: process
+        processor:
+            name: invest_processes.processes.MyCoolSqrtProcessor
