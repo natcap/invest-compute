@@ -95,4 +95,3 @@ class ExecuteProcessor(BaseProcessor):
 
     def __repr__(self):
         return f'<InVESTExecuteProcessor> {self.name}'
-        
