@@ -1,0 +1,32 @@
+[project]
+name = "natcap.invest-processes"
+description = "InVEST pygeoapi processes"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+license-files = ["LICENSE.txt"]
+maintainers = [
+    {name = "Natural Capital Project Software Team"}
+]
+# the version is provided dynamically by setuptools_scm
+# `dependencies` and `optional-dependencies` are provided by setuptools
+# using the corresponding setup args `install_requires` and `extras_require`
+dynamic = ["version", "dependencies", "optional-dependencies"]
+
+[project.urls]
+homepage = "http://github.com/natcap/invest-compute"
+
+[build-system]
+# these are the minimum packages needed in order to execute the natcap.invest
+# build.
+# NOTE: GDAL is *not* required here because the compiled cython module
+# will dynamically import GDAL via python's import system.  This behavior means
+# that we can provide a much easier build experience so long as GDAL is
+# available at runtime.
+requires = ['setuptools>=64', 'wheel', 'setuptools_scm>=8.0']
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+# Use default configuration. A warning is issued if this section is absent.
+
+[tool.setuptools.packages.find]
+where = ["src"]
