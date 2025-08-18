@@ -1,10 +1,13 @@
 import importlib
+import logging
 import os
 import tempfile
 import time
 
-from natcap.invest import datastack, models
+from natcap.invest import datastack, models, spec, utils
 from pygeoapi.process.base import BaseProcessor, ProcessorExecuteError
+
+LOGGER = logging.getLogger(__name__)
 
 PROCESS_METADATA = {
     'version': '0.1.0',
@@ -73,11 +76,16 @@ class ExecuteProcessor(BaseProcessor):
         """
         # Extract model ID and parameters from the datastack file
         datastack_path = data.get('datastack_path')
-        parameter_set = datastack.extract_parameter_set(datastack_path)
+
+        try:
+            parameter_set = datastack.extract_parameter_set(datastack_path)
+        except Exception as error:
+            raise ProcessorExecuteError(
+                1, "Error when parsing JSON datastack:\n    " + str(error))
 
         # Import the model
         try:
-            invest_module = models.pyname_to_module[
+            model_module = models.pyname_to_module[
                 models.model_id_to_pyname[parameter_set.model_id]]
         except KeyError as ex:
             raise ValueError(f'model ID {parameter_set.model_id} not found')
@@ -87,8 +95,45 @@ class ExecuteProcessor(BaseProcessor):
         workspace_dir = os.path.join(workspace_root, f'{parameter_set.model_id}_{time.time()}')
         parameter_set.args['workspace_dir'] = workspace_dir
 
-        # Execute the model
-        invest_module.execute(parameter_set.args)
+        for arg_key, val in parameter_set.args.items():
+            try:
+                input_spec = model_module.MODEL_SPEC.get_input(arg_key)
+            except KeyError:
+                continue
+            # Uncomment this for next invest release
+            # if type(input_spec) in {spec.RasterInput, spec.SingleBandRasterInput,
+            #                         spec.VectorInput}:
+            #     parameter_set.args[arg_key] = utils._GDALPath.from_uri(
+            #         val).to_normalized_path()
+
+        with utils.prepare_workspace(workspace_dir,
+                                     model_id=parameter_set.model_id,
+                                     logging_level=logging.DEBUG):
+            LOGGER.log(
+                datastack.ARGS_LOG_LEVEL,
+                'Starting model with parameters: \n' +
+                datastack.format_args_dict(
+                    parameter_set.args,
+                    parameter_set.model_id))
+
+            try:
+                model_module.execute(parameter_set.args)
+            except Exception as ex:
+                LOGGER.error(
+                    f'An error occurred during execution: {ex}', exc_info=ex)
+                raise ProcessorExecuteError(
+                    'An error occurred during execution. See the log file in '
+                    'the workspace for details. \n Workspace: ' + workspace_dir)
+
+            LOGGER.info('Generating metadata for results')
+            try:
+                # If there's an exception from creating metadata
+                # I don't think we want to indicate a model failure
+                spec.generate_metadata_for_outputs(
+                    model_module, parameter_set.args)
+            except Exception as ex:
+                LOGGER.warning(
+                    'Something went wrong while generating metadata', exc_info=ex)
 
         outputs = {'workspace_dir': workspace_dir}
         return 'application/json', outputs
