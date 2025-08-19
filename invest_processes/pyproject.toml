@@ -1,0 +1,28 @@
+[project]
+name = "invest-processes"
+description = "InVEST pygeoapi processes"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+license-files = ["LICENSE.txt"]
+maintainers = [
+    {name = "Natural Capital Project Software Team"}
+]
+dynamic = ["version"] # the version is provided dynamically by setuptools_scm
+dependencies = [
+    "flask",
+    "natcap.invest",
+    "pygeoapi"
+]
+
+[project.urls]
+homepage = "http://github.com/natcap/invest-compute"
+
+[build-system]
+requires = ['setuptools>=64', 'wheel', 'setuptools_scm>=8.0']
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+root = ".."
+
+[tool.setuptools.packages.find]
+where = ["src"]
