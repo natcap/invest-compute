@@ -1,0 +1,14 @@
+{
+    "args": {
+        "calc_sequestration": true, 
+        "carbon_pools_path": "carbon_pools_willamette.csv", 
+        "do_valuation": false, 
+        "lulc_bas_path": "lulc_current_willamette.tif", 
+        "lulc_bas_year": "2020", 
+        "lulc_alt_path": "lulc_future_willamette.tif", 
+        "lulc_alt_year": "2050", 
+        "results_suffix": "willamette"
+    }, 
+    "invest_version": "3.7.0", 
+    "model_name": "natcap.invest.carbon"
+}
