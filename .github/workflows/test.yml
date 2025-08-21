@@ -1,0 +1,51 @@
+name: Run Tests
+
+on: [push, pull_request]
+
+defaults:
+  run:
+    shell: bash -l {0}
+
+concurrency:
+  # make sure only one run of this workflow for a given PR or a given branch
+  # can happen at one time. previous queued or started runs will be cancelled.
+  # github.workflow is the workflow name
+  # github.ref is the ref that triggered the workflow run
+  # on push, this is refs/heads/<branch name>
+  # on pull request, this is refs/pull/<pull request number>/merge
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  run-tests:
+    name: Run tests
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch complete history for accurate versioning
+
+      - name: Setup conda environment
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: env
+          create-args: >-
+            python=3.13
+            natcap.invest
+          condarc: |
+            channels:
+              - conda-forge
+              - nodefaults
+          init-shell: bash
+
+      - name: List conda environment
+        run: micromamba list
+
+      - name: Install package
+        run: cd invest_processes && pip install .
+
+      - name: Run tests
+        run: pytest tests/
