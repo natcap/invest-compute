@@ -7,14 +7,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
     def setUp(self):
         # Import current pygeoapi Flask app module
         from pygeoapi import flask_app
-
-        # # Set server root path
-        # url_parts = urlsplit(flask_app.CONFIG['server']['url'])
-        # app_root = url_parts.path.rstrip('/') or '/'
-        # flask_app.APP.config['SERVER_NAME'] = url_parts.netloc
-        # flask_app.APP.config['APPLICATION_ROOT'] = app_root
-        kwargs = {}
-        self.client = flask_app.APP.test_client(**kwargs)
+        self.client = flask_app.APP.test_client()
 
     def tearDown(self):
         pass
