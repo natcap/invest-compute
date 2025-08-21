@@ -35,6 +35,7 @@ jobs:
           create-args: >-
             python=3.13
             natcap.invest
+            pytest
           condarc: |
             channels:
               - conda-forge
