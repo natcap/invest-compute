@@ -2,12 +2,15 @@ import json
 import os.path
 import unittest
 
+from pygeoapi import flask_app
+
+
 class PyGeoAPIServerTests(unittest.TestCase):
 
     def setUp(self):
-        # Import current pygeoapi Flask app module
-        from pygeoapi import flask_app
         self.client = flask_app.APP.test_client()
+        self.raster_path = os.path.abspath(os.path.join(
+            os.path.dirname(__file__), 'test_data/carbon_willamette.invs.json'))
 
     def tearDown(self):
         pass
@@ -17,11 +20,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
     def testExecuteProcessExecution(self):
-        path = os.path.abspath(os.path.join(
-            os.path.dirname(__file__), 'test_data/carbon_willamette.invs.json'))
         response = self.client.post(f'/processes/execute/execution', json={
             'inputs': {
-                'datastack_path': path
+                'datastack_path': self.raster_path
             }
         })
         self.assertEqual(response.status_code, 200)
@@ -34,11 +35,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
 
     def testValidateProcessExecution(self):
         """Validation of a datastack should return validation messages"""
-        path = os.path.abspath(os.path.join(
-            os.path.dirname(__file__), 'test_data/carbon_willamette.invs.json'))
         response = self.client.post(f'/processes/validate/execution', json={
             'inputs': {
-                'datastack_path': path
+                'datastack_path': self.raster_path
             }
         })
         self.assertEqual(response.status_code, 200)
