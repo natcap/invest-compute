@@ -91,7 +91,12 @@ resources:
         processor:
             name: HelloWorld
 
-    invest:
+    execute:
         type: process
         processor:
             name: invest_processes.execute.ExecuteProcessor
+
+    validate:
+        type: process
+        processor:
+            name: invest_processes.validate.ValidateProcessor
