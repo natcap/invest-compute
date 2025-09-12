@@ -9,6 +9,7 @@ from pygeoapi.util import (
     RequestedResponse,
     Subscriber
 )
+import pyslurm
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,7 +27,10 @@ class SlurmManager(BaseManager):
 
         super().__init__(manager_def)
 
-    def get_jobs(self, status: JobStatus = None, limit=None, offset=None
+    def get_jobs(self,
+                 status: JobStatus = None,
+                 limit: Optional[int] = None,
+                 offset: Optional[int] = None
                  ) -> dict:
         """
         Get process jobs, optionally filtered by status
@@ -40,7 +44,109 @@ class SlurmManager(BaseManager):
                   and numberMatched
         """
 
-        return {'jobs': [], 'numberMatched': 0}
+        all_jobs = pyslurm.db.Jobs().get()
+        return all_jobs
+
+    def add_job(self, job_metadata: dict) -> str:
+        """
+        Add a job
+
+        :param job_metadata: `dict` of job metadata
+
+        :returns: `str` added job identifier
+        """
+        LOGGER.info('adding job')
+
+        # Define job parameters using JobSubmitDescription
+        job_desc = pyslurm.JobSubmitDescription(
+            name="my_pyslurm_job",  # Name of your job
+            time_limit=30,          # Time limit in minutes
+            partition="debug",      # Specify the partition/queue
+            nodes=1,                # Number of nodes requested
+            ntasks=1,               # Number of tasks
+            cpus_per_task=2,        # CPUs per task
+            script="""#!/bin/bash
+        srun hostname
+        srun sleep 10
+        echo "Job finished"
+        """  # The actual shell script to be executed
+        )
+
+        # Submit the job
+        try:
+            job_id = job_desc.submit()
+            LOGGER.info(f"Job submitted successfully with ID: {job_id}")
+        except pyslurm.SlurmError as e:
+            LOGGER.error(f"Error submitting job: {e}")
+        return job_id
+
+    def update_job(self, job_id: str, update_dict: dict) -> bool:
+        """
+        Updates a job
+
+        :param job_id: job identifier
+        :param update_dict: `dict` of property updates
+
+        :returns: `bool` of status result
+        """
+
+        raise NotImplementedError()
+
+    def get_job(self, job_id: str) -> dict:
+        """
+        Get a job (!)
+
+        :param job_id: job identifier
+
+        :raises JobNotFoundError: if the job_id does not correspond to a
+                                  known job
+        :returns: `dict` of job result
+        """
+        job_info = pyslurm.db.Job.load(job_id, with_script=True)
+
+        if job_info:
+            print(f"Job Name: {job_info.job_name}")
+            print(f"Job State: {job_info.state}")
+            print(f"Batch Script: {job_info.script}")
+        else:
+            print(f"Job with ID {job_id} not found.")
+        return job_info
+
+    def get_job_result(self, job_id: str) -> Tuple[str, Any]:
+        """
+        Returns the actual output from a completed process
+
+        :param job_id: job identifier
+
+        :raises JobNotFoundError: if the job_id does not correspond to a
+                                  known job
+        :raises JobResultNotFoundError: if the job-related result cannot
+                                         be returned
+        :returns: `tuple` of mimetype and raw output
+        """
+
+        raise JobResultNotFoundError()
+
+    def delete_job(self, job_id: str) -> bool:
+        """
+        Deletes a job and associated results/outputs
+
+        :param job_id: job identifier
+
+        :raises JobNotFoundError: if the job_id does not correspond to a
+                                   known job
+        :returns: `bool` of status result
+        """
+        step_id = 0     # Replace with the step ID (0 for the main job step)
+        job_step = pyslurm.JobStep(job_id, step_id)
+
+        try:
+            # Cancel the job step
+            job_step.cancel()
+
+            LOGGER.info(f"Successfully cancelled job step {job_id}.{step_id}")
+        except pyslurm.RPCError as e:
+            LOGGER.error(f"Failed to cancel job step {job_id}.{step_id}: {e}")
 
     def execute_process(
             self,
