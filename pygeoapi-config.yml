@@ -86,11 +86,6 @@ metadata:
 
 resources:
 
-    hello-world:
-        type: process
-        processor:
-            name: invest_processes.hello_world.HelloWorldProcessor
-
     execute:
         type: process
         processor:
