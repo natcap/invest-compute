@@ -1,6 +1,7 @@
 import logging
 from typing import Any, Dict, Optional, Tuple
 import uuid
+import subprocess
 
 from pygeoapi.process.manager.base import BaseManager
 from pygeoapi.util import (
@@ -59,17 +60,26 @@ class SlurmManager(BaseManager):
         """
         LOGGER.info('adding job')
 
-        # Define job parameters using JobSubmitDescription
-        job_desc = pyslurm.JobSubmitDescription(
-            name="my_pyslurm_job",
-            time_limit="10-00:00:00",
-            cpus_per_task=1,
-            script='/home/esoth/script.sh'
-        )
+        script = """
+        #!/bin/sh
+        #SBATCH --time=1
+        echo 'hello from a slurm job' && sleep 10
+        """
+
+        with open('tmp_script.slurm', 'w') as fp:
+            fp.write(script)
+
+        result = subprocess.run(
+            ['sbatch', '--parsable', 'tmp_script.slurm'],
+            capture_output=True,
+            text=True,
+            check=True)
+
+        LOGGER.info(result.stdout)
 
         # Submit the job
         try:
-            job_id = job_desc.submit()
+            job_id = result.stdout
             LOGGER.info(f"Job submitted successfully with ID: {job_id}")
         except pyslurm.SlurmError as e:
             LOGGER.error(f"Error submitting job: {e}")
