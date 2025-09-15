@@ -4,6 +4,7 @@ import uuid
 
 from pygeoapi.process.manager.base import BaseManager
 from pygeoapi.util import (
+    get_current_datetime,
     JobStatus,
     ProcessExecutionMode,
     RequestedProcessExecutionMode,
