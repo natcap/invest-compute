@@ -69,6 +69,9 @@ class SlurmManager(BaseManager):
         with open('tmp_script.slurm', 'w') as fp:
             fp.write(script)
 
+        with open('tmp_script.slurm') as fp:
+            print(fp.read())
+
         try:
             result = subprocess.run(
                 ['sbatch', '--parsable', 'tmp_script.slurm'],
