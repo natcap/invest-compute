@@ -156,21 +156,25 @@ class SlurmManager(BaseManager):
             requested_outputs: Optional[dict] = None,
             subscriber: Optional[Subscriber] = None,
             requested_response: Optional[RequestedResponse] = RequestedResponse.raw.value  # noqa
-    ) -> Tuple[str, str, Any, JobStatus, Optional[Dict[str, str]]]:
+    ) -> Tuple[str, Any, JobStatus, Optional[Dict[str, str]]]:
         """
         Default process execution handler
 
         :param process_id: process identifier
         :param data_dict: `dict` of data parameters
-        :param execution_mode: requested execution mode
-        :param requested_outputs: `dict` optionally specify the subset of
-            required outputs - defaults to all outputs.
-            The value of any key may be an object and include the property
-            `transmissionMode` - defaults to `value`.
-            Note: 'optional' is for backward compatibility.
+        :param execution_mode: `str` optionally specifying sync or async
+                               processing.
+        :param requested_outputs: `dict` optionally specifying the subset of
+                                  required outputs - defaults to all outputs.
+                                  The value of any key may be an object and
+                                  include the property `transmissionMode`
+                                  (default is `value`)
+                                  Note: 'optional' is for backward
+                                  compatibility.
         :param subscriber: `Subscriber` optionally specifying callback urls
         :param requested_response: `RequestedResponse` optionally specifying
                                    raw or document (default is `raw`)
+
 
         :raises UnknownProcessError: if the input process_id does not
                                      correspond to a known process
@@ -179,39 +183,80 @@ class SlurmManager(BaseManager):
                   response
         """
 
-        jfmt = 'application/json'
+        job_id = str(uuid.uuid1())
+        processor = self.get_processor(process_id)
+        processor.set_job_id(job_id)
+        extra_execute_handler_parameters = {
+            'requested_response': requested_response
+        }
 
-        response_headers = None
-        if execution_mode is not None:
+        if execution_mode == RequestedProcessExecutionMode.respond_async:
+            job_control_options = processor.metadata.get(
+                'jobControlOptions', [])
+            # client wants async - do we support it?
+            process_supports_async = (
+                ProcessExecutionMode.async_execute.value in job_control_options
+                )
+            if self.is_async and process_supports_async:
+                LOGGER.debug('Asynchronous execution')
+                handler = self._execute_handler_async
+                response_headers = {
+                    'Preference-Applied': (
+                        RequestedProcessExecutionMode.respond_async.value)
+                }
+            else:
+                LOGGER.debug('Synchronous execution')
+                handler = self._execute_handler_sync
+                response_headers = {
+                    'Preference-Applied': (
+                        RequestedProcessExecutionMode.wait.value)
+                }
+        elif execution_mode == RequestedProcessExecutionMode.wait:
+            # client wants sync - pygeoapi implicitly supports sync mode
+            LOGGER.debug('Synchronous execution')
+            handler = self._execute_handler_sync
             response_headers = {
                 'Preference-Applied': RequestedProcessExecutionMode.wait.value}
-            if execution_mode == RequestedProcessExecutionMode.respond_async:
-                LOGGER.debug('Dummy manager does not support asynchronous')
-                LOGGER.debug('Forcing synchronous execution')
+        else:  # client has no preference
+            # according to OAPI - Processes spec we ought to respond with sync
+            LOGGER.debug('Synchronous execution')
+            handler = self._execute_handler_sync
+            response_headers = None
 
-        self._send_in_progress_notification(subscriber)
-        processor = self.get_processor(process_id)
-        try:
-            jfmt, outputs = processor.execute(
-                data_dict, outputs=requested_outputs)
-            current_status = JobStatus.successful
-            self._send_success_notification(subscriber, outputs)
-        except Exception as err:
-            outputs = {
-                'code': 'InvalidParameterValue',
-                'description': f'Error executing process: {err}'
-            }
-            current_status = JobStatus.failed
-            LOGGER.exception(err)
-            self._send_failed_notification(subscriber)
+        # Add Job before returning any response.
+        current_status = JobStatus.accepted
+        job_metadata = {
+            'type': 'process',
+            'identifier': job_id,
+            'process_id': process_id,
+            'created': get_current_datetime(),
+            'started': get_current_datetime(),
+            'updated': get_current_datetime(),
+            'finished': None,
+            'status': current_status.value,
+            'location': None,
+            'mimetype': 'application/octet-stream',
+            'message': 'Job accepted and ready for execution',
+            'progress': 5
+        }
+        self.add_job(job_metadata)
 
-        if requested_response == RequestedResponse.document.value:
-            outputs = {
-                'outputs': [outputs]
-            }
+        # only pass subscriber if supported, otherwise this breaks
+        # existing managers
+        if self.supports_subscribing:
+            extra_execute_handler_parameters['subscriber'] = subscriber
 
-        job_id = str(uuid.uuid1())
-        return job_id, jfmt, outputs, current_status, response_headers
+        # TODO: handler's response could also be allowed to include more HTTP
+        # headers
+        mime_type, outputs, status = handler(
+            processor,
+            job_id,
+            data_dict,
+            requested_outputs,
+            **extra_execute_handler_parameters)
+
+        return job_id, mime_type, outputs, status, response_headers
+
 
     def __repr__(self):
         return f'<SlurmManager> {self.name}'
