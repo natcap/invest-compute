@@ -61,12 +61,9 @@ class SlurmManager(BaseManager):
 
         # Define job parameters using JobSubmitDescription
         job_desc = pyslurm.JobSubmitDescription(
-            name="my_pyslurm_job",  # Name of your job
-            time_limit=30,          # Time limit in minutes
-            partition="debug",      # Specify the partition/queue
-            nodes=1,                # Number of nodes requested
-            ntasks=1,               # Number of tasks
-            cpus_per_task=2,        # CPUs per task
+            name="my_pyslurm_job",
+            time_limit="10-00:00:00",
+            cpus_per_task=2,
             script="""#!/bin/bash
         srun hostname
         srun sleep 10
