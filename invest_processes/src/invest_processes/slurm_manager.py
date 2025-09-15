@@ -59,23 +59,25 @@ class SlurmManager(BaseManager):
         """
         LOGGER.info('adding job')
 
-        # Define job parameters using JobSubmitDescription
-        job_desc = pyslurm.JobSubmitDescription(
-            name="my_pyslurm_job",
-            time_limit="10-00:00:00",
-            cpus_per_task=2,
-            script="""#!/bin/bash
-        srun hostname
-        srun sleep 10
-        echo "Job finished"
-        """  # The actual shell script to be executed
-        )
+        # Create a job object
+        job = pyslurm.job()
+
+        # Define the job options as a dictionary.
+        # The 'wrap' key contains the command to execute.
+        # Other sbatch options can be included as dictionary entries.
+        job_options = {
+            'script': 'echo "Hello from a wrapped pyslurm job!" && sleep 10',
+            'name': 'wrapped_job_test',
+            'cpus_per_task': 1,
+            'time_limit': "10-00:00:00",
+            'output': 'pyslurm_wrapped_output.out',
+        }
 
         # Submit the job
         try:
-            job_id = job_desc.submit()
+            job_id = job.submit_batch_job(job_options)
             LOGGER.info(f"Job submitted successfully with ID: {job_id}")
-        except pyslurm.SlurmError as e:
+        except pyslurm.PyslurmError as e:
             LOGGER.error(f"Error submitting job: {e}")
         return job_id
 
