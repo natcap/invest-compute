@@ -69,13 +69,18 @@ class SlurmManager(BaseManager):
         with open('tmp_script.slurm', 'w') as fp:
             fp.write(script)
 
-        result = subprocess.run(
-            ['sbatch', '--parsable', 'tmp_script.slurm'],
-            capture_output=True,
-            text=True,
-            check=True)
+        try:
+            result = subprocess.run(
+                ['sbatch', '--parsable', 'tmp_script.slurm'],
+                capture_output=True,
+                text=True,
+                check=True)
 
-        LOGGER.info(result.stdout)
+            LOGGER.info(result.stdout)
+        except subprocess.CalledProcessError as e:
+            print(e.stdout)
+            print(e.stderr)
+
 
         # Submit the job
         try:
