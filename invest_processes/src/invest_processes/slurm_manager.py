@@ -64,7 +64,7 @@ class SlurmManager(BaseManager):
             name="my_pyslurm_job",
             time_limit="10-00:00:00",
             cpus_per_task=1,
-            script='#!/bin/bash\necho "hello from slurm job" && sleep 10'
+            script='/home/esoth/script.sh'
         )
 
         # Submit the job
