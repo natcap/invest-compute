@@ -28,8 +28,8 @@ class SlurmManager(BaseManager):
 
         :returns: `pygeoapi.process.manager.base.BaseManager`
         """
-
         super().__init__(manager_def)
+        self.is_async = True
 
     def get_jobs(self,
                  status: JobStatus = None,
@@ -207,6 +207,12 @@ class SlurmManager(BaseManager):
         if execution_mode == RequestedProcessExecutionMode.respond_async:
             job_control_options = processor.metadata.get(
                 'jobControlOptions', [])
+            print(
+                execution_mode,
+                job_control_options,
+                ProcessExecutionMode.async_execute.value,
+                ProcessExecutionMode.async_execute.value in job_control_options,
+                self.is_async)
             # client wants async - do we support it?
             process_supports_async = (
                 ProcessExecutionMode.async_execute.value in job_control_options
