@@ -2,6 +2,7 @@ import logging
 from typing import Any, Dict, Optional, Tuple
 import uuid
 import subprocess
+import textwrap
 
 from pygeoapi.process.manager.base import BaseManager
 from pygeoapi.util import (
@@ -60,11 +61,11 @@ class SlurmManager(BaseManager):
         """
         LOGGER.info('adding job')
 
-        script = """
-        #!/bin/sh
-        #SBATCH --time=1
-        echo 'hello from a slurm job' && sleep 10
-        """
+        script = textwrap.dedent("""\
+            #!/bin/sh
+            #SBATCH --time=1
+            echo 'hello from a slurm job' && sleep 10
+            """)
 
         with open('tmp_script.slurm', 'w') as fp:
             fp.write(script)
