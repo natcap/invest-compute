@@ -62,6 +62,8 @@ class SlurmManager(BaseManager):
         """
         LOGGER.info('adding job')
 
+        print(job_metadata)
+
         script = textwrap.dedent("""\
             #!/bin/sh
             #SBATCH --time=1
@@ -207,6 +209,8 @@ class SlurmManager(BaseManager):
             'requested_response': requested_response
         }
 
+        print(data_dict)
+
         if execution_mode == RequestedProcessExecutionMode.respond_async:
             job_control_options = processor.metadata.get(
                 'jobControlOptions', [])
@@ -242,21 +246,21 @@ class SlurmManager(BaseManager):
 
         # Add Job before returning any response.
         current_status = JobStatus.accepted
-        job_metadata = {
-            'type': 'process',
-            'identifier': job_id,
-            'process_id': process_id,
-            'created': get_current_datetime(),
-            'started': get_current_datetime(),
-            'updated': get_current_datetime(),
-            'finished': None,
-            'status': current_status.value,
-            'location': None,
-            'mimetype': 'application/octet-stream',
-            'message': 'Job accepted and ready for execution',
-            'progress': 5
-        }
-        self.add_job(job_metadata)
+        # job_metadata = {
+        #     'type': 'process',
+        #     'identifier': job_id,
+        #     'process_id': process_id,
+        #     'created': get_current_datetime(),
+        #     'started': get_current_datetime(),
+        #     'updated': get_current_datetime(),
+        #     'finished': None,
+        #     'status': current_status.value,
+        #     'location': None,
+        #     'mimetype': 'application/octet-stream',
+        #     'message': 'Job accepted and ready for execution',
+        #     'progress': 5
+        # }
+        # self.add_job(job_metadata)
 
         # only pass subscriber if supported, otherwise this breaks
         # existing managers
@@ -273,6 +277,38 @@ class SlurmManager(BaseManager):
             **extra_execute_handler_parameters)
 
         return job_id, mime_type, outputs, status, response_headers
+
+
+    def submit_slurm_job(self, processor, data_dict):
+        print(data_dict)
+
+        with open('tmp_script.slurm') as fp:
+            print(fp.read())
+
+        processor.create_slurm_script(data_dict, 'tmp_script.slurm')
+
+        try:
+            result = subprocess.run(
+                ['sbatch', '--parsable', 'tmp_script.slurm'],
+                capture_output=True,
+                text=True,
+                check=True)
+            print(result)
+            print(result.stdout)
+
+            LOGGER.info(result.stdout)
+        except subprocess.CalledProcessError as e:
+            print(e.stdout)
+            print(e.stderr)
+
+
+        # Submit the job
+        try:
+            job_id = result.stdout
+            LOGGER.info(f"Job submitted successfully with ID: {job_id}")
+        except pyslurm.SlurmError as e:
+            LOGGER.error(f"Error submitting job: {e}")
+        return job_id
 
 
     def _execute_handler_sync(self, p: BaseProcessor, job_id: str,
@@ -322,7 +358,8 @@ class SlurmManager(BaseManager):
                 job_filename = None
 
             current_status = JobStatus.running
-            jfmt, outputs = p.execute(data_dict, **extra_execute_parameters)
+
+            self.submit_slurm_job(p, data_dict)
 
             if requested_response == RequestedResponse.document.value:
                 outputs = {

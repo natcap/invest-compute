@@ -2,6 +2,7 @@ import importlib
 import logging
 import os
 import tempfile
+import textwrap
 import time
 
 from natcap.invest import datastack, models, spec, utils
@@ -63,6 +64,35 @@ class ExecuteProcessor(BaseProcessor):
         """
 
         super().__init__(processor_def, PROCESS_METADATA)
+
+    def create_slurm_script(self, data, path):
+
+        # Extract model ID and parameters from the datastack file
+        datastack_path = data.get('datastack_path')
+
+        try:
+            model_id = datastack.extract_parameter_set(datastack_path).model_id
+        except Exception as error:
+            raise ProcessorExecuteError(
+                1, "Error when parsing JSON datastack:\n    " + str(error))
+
+        # Create a workspace directory
+        workspace_root = os.path.abspath('workspaces')
+        workspace_dir = os.path.join(workspace_root, f'{model_id}_{time.time()}')
+
+        script = textwrap.dedent(f"""\
+            #!/bin/sh
+            #SBATCH --time=10
+            echo 'hello from a slurm job' && sleep 10
+            invest run --datastack {datastack_path} --workspace {workspace_dir} {model_id}
+            """)
+
+        with open(path, 'w') as fp:
+            fp.write(script)
+
+        outputs = {'workspace_dir': workspace_dir}
+        return 'application/json', outputs
+
 
     def execute(self, data, outputs=None):
         """Execute the process.
