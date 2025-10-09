@@ -285,7 +285,7 @@ class SlurmManager(BaseManager):
         with open('tmp_script.slurm') as fp:
             print(fp.read())
 
-        processor.create_slurm_script(data_dict, 'tmp_script.slurm')
+        jfmt, outputs = processor.create_slurm_script(data_dict, 'tmp_script.slurm')
 
         try:
             result = subprocess.run(
@@ -308,7 +308,7 @@ class SlurmManager(BaseManager):
             LOGGER.info(f"Job submitted successfully with ID: {job_id}")
         except pyslurm.SlurmError as e:
             LOGGER.error(f"Error submitting job: {e}")
-        return job_id
+        return jfmt, outputs
 
 
     def _execute_handler_sync(self, p: BaseProcessor, job_id: str,
@@ -359,7 +359,7 @@ class SlurmManager(BaseManager):
 
             current_status = JobStatus.running
 
-            self.submit_slurm_job(p, data_dict)
+            jfmt, outputs = self.submit_slurm_job(p, data_dict)
 
             if requested_response == RequestedResponse.document.value:
                 outputs = {
