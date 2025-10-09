@@ -370,7 +370,8 @@ class SlurmManager(BaseManager):
                 'sacct', '--noheader', '-X',
                 '-j', outputs['job_id'],
                 '-o', 'State'
-            ]).strip()
+            ], capture_output=True, text=True, check=True).stdout.strip()
+            print(status)
 
             if status == 'COMPLETED':
                 break
