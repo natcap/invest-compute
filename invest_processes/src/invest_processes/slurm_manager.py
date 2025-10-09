@@ -80,6 +80,8 @@ class SlurmManager(BaseManager):
                 capture_output=True,
                 text=True,
                 check=True)
+            print(result)
+            print(result.stdout)
 
             LOGGER.info(result.stdout)
         except subprocess.CalledProcessError as e:
