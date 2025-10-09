@@ -94,7 +94,7 @@ class SlurmManager(BaseManager):
 
         # Submit the job
         try:
-            job_id = result.stdout
+            job_id = result.stdout.strip()
             LOGGER.info(f"Job submitted successfully with ID: {job_id}")
         except pyslurm.SlurmError as e:
             LOGGER.error(f"Error submitting job: {e}")
@@ -352,82 +352,82 @@ class SlurmManager(BaseManager):
 
         self._send_in_progress_notification(subscriber)
 
-        try:
-            if self.output_dir is not None:
-                filename = f"{p.metadata['id']}-{job_id}"
-                job_filename = self.output_dir / filename
-            else:
-                job_filename = None
+        # try:
+        if self.output_dir is not None:
+            filename = f"{p.metadata['id']}-{job_id}"
+            job_filename = self.output_dir / filename
+        else:
+            job_filename = None
 
-            current_status = JobStatus.running
+        current_status = JobStatus.running
 
-            jfmt, outputs = self.submit_slurm_job(p, data_dict)
+        jfmt, outputs = self.submit_slurm_job(p, data_dict)
 
-            print(jfmt, outputs)
+        print(jfmt, outputs)
 
-            while True:
-                status = subprocess.run([
-                    'sacct', '--noheader', '-X',
-                    '-j', outputs['job_id'],
-                    '-o', 'State'
-                ]).strip()
+        while True:
+            status = subprocess.run([
+                'sacct', '--noheader', '-X',
+                '-j', outputs['job_id'],
+                '-o', 'State'
+            ]).strip()
 
-                if status == 'COMPLETED':
-                    break
-                time.sleep(10)
+            if status == 'COMPLETED':
+                break
+            time.sleep(10)
 
-            if requested_response == RequestedResponse.document.value:
-                outputs = {
-                    'outputs': [outputs]
-                }
-
-            if self.output_dir is not None:
-                LOGGER.debug(f'writing output to {job_filename}')
-                if isinstance(outputs, (dict, list)):
-                    mode = 'w'
-                    data = json.dumps(outputs, sort_keys=True, indent=4)
-                    encoding = 'utf-8'
-                elif isinstance(outputs, bytes):
-                    mode = 'wb'
-                    data = outputs
-                    encoding = None
-                with job_filename.open(mode=mode, encoding=encoding) as fh:
-                    fh.write(data)
-
-            current_status = JobStatus.successful
-
-            self._send_success_notification(subscriber, outputs=outputs)
-
-        except Exception as err:
-            # TODO assess correct exception type and description to help users
-            # NOTE, the /results endpoint should return the error HTTP status
-            # for jobs that failed, the specification says that failing jobs
-            # must still be able to be retrieved with their error message
-            # intact, and the correct HTTP error status at the /results
-            # endpoint, even if the /result endpoint correctly returns the
-            # failure information (i.e. what one might assume is a 200
-            # response).
-
-            current_status = JobStatus.failed
-            code = 'InvalidParameterValue'
+        if requested_response == RequestedResponse.document.value:
             outputs = {
-                'type': code,
-                'code': code,
-                'description': f'Error executing process: {err}'
-            }
-            LOGGER.exception(err)
-            job_metadata = {
-                'finished': get_current_datetime(),
-                'updated': get_current_datetime(),
-                'status': current_status.value,
-                'location': None,
-                'mimetype': 'application/octet-stream',
-                'message': f'{code}: {outputs["description"]}'
+                'outputs': [outputs]
             }
 
-            jfmt = 'application/json'
+        if self.output_dir is not None:
+            LOGGER.debug(f'writing output to {job_filename}')
+            if isinstance(outputs, (dict, list)):
+                mode = 'w'
+                data = json.dumps(outputs, sort_keys=True, indent=4)
+                encoding = 'utf-8'
+            elif isinstance(outputs, bytes):
+                mode = 'wb'
+                data = outputs
+                encoding = None
+            with job_filename.open(mode=mode, encoding=encoding) as fh:
+                fh.write(data)
 
-            self._send_failed_notification(subscriber)
+        current_status = JobStatus.successful
+
+        self._send_success_notification(subscriber, outputs=outputs)
+
+        # except Exception as err:
+        #     # TODO assess correct exception type and description to help users
+        #     # NOTE, the /results endpoint should return the error HTTP status
+        #     # for jobs that failed, the specification says that failing jobs
+        #     # must still be able to be retrieved with their error message
+        #     # intact, and the correct HTTP error status at the /results
+        #     # endpoint, even if the /result endpoint correctly returns the
+        #     # failure information (i.e. what one might assume is a 200
+        #     # response).
+
+        #     current_status = JobStatus.failed
+        #     code = 'InvalidParameterValue'
+        #     outputs = {
+        #         'type': code,
+        #         'code': code,
+        #         'description': f'Error executing process: {err}'
+        #     }
+        #     LOGGER.exception(err)
+        #     job_metadata = {
+        #         'finished': get_current_datetime(),
+        #         'updated': get_current_datetime(),
+        #         'status': current_status.value,
+        #         'location': None,
+        #         'mimetype': 'application/octet-stream',
+        #         'message': f'{code}: {outputs["description"]}'
+        #     }
+
+        #     jfmt = 'application/json'
+
+        #     self._send_failed_notification(subscriber)
 
         return jfmt, outputs, current_status
 
