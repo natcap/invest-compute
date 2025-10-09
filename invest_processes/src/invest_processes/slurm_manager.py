@@ -361,6 +361,8 @@ class SlurmManager(BaseManager):
 
             jfmt, outputs = self.submit_slurm_job(p, data_dict)
 
+            print(jfmt, outputs)
+
             if requested_response == RequestedResponse.document.value:
                 outputs = {
                     'outputs': [outputs]
