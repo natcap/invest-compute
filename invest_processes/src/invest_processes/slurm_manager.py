@@ -4,6 +4,7 @@ import uuid
 import subprocess
 import textwrap
 
+from pygeoapi.process.base import BaseProcessor
 from pygeoapi.process.manager.base import BaseManager
 from pygeoapi.util import (
     get_current_datetime,
@@ -13,7 +14,6 @@ from pygeoapi.util import (
     RequestedResponse,
     Subscriber
 )
-import pyslurm
 
 LOGGER = logging.getLogger(__name__)
 
