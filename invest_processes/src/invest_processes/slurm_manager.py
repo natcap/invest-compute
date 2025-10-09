@@ -207,12 +207,6 @@ class SlurmManager(BaseManager):
         if execution_mode == RequestedProcessExecutionMode.respond_async:
             job_control_options = processor.metadata.get(
                 'jobControlOptions', [])
-            print(
-                execution_mode,
-                job_control_options,
-                ProcessExecutionMode.async_execute.value,
-                ProcessExecutionMode.async_execute.value in job_control_options,
-                self.is_async)
             # client wants async - do we support it?
             process_supports_async = (
                 ProcessExecutionMode.async_execute.value in job_control_options
@@ -276,6 +270,111 @@ class SlurmManager(BaseManager):
             **extra_execute_handler_parameters)
 
         return job_id, mime_type, outputs, status, response_headers
+
+
+    def _execute_handler_sync(self, p: BaseProcessor, job_id: str,
+                              data_dict: dict,
+                              requested_outputs: Optional[dict] = None,
+                              subscriber: Optional[Subscriber] = None,
+                              requested_response: Optional[RequestedResponse] = RequestedResponse.raw.value  # noqa
+                              ) -> Tuple[str, Any, JobStatus]:
+        """
+        Synchronous execution handler
+
+        If the manager has defined `output_dir`, then the result
+        will be written to disk
+        output store. There is no clean-up of old process outputs.
+
+        :param p: `pygeoapi.process` object
+        :param job_id: job identifier
+        :param data_dict: `dict` of data parameters
+        :param requested_outputs: `dict` optionally specifying the subset of
+                                  required outputs - defaults to all outputs.
+                                  The value of any key may be an object and
+                                  include the property `transmissionMode`
+                                  (defaults to `value`)
+                                  Note: 'optional' is for backward
+                                  compatibility.
+        :param subscriber: optional `Subscriber` specifying callback URLs
+        :param requested_response: `RequestedResponse` optionally specifying
+                                   raw or document (default is `raw`)
+
+        :returns: tuple of MIME type, response payload and status
+        """
+
+        extra_execute_parameters = {}
+
+        # only pass requested_outputs if supported,
+        # otherwise this breaks existing processes
+        if p.supports_outputs:
+            extra_execute_parameters['outputs'] = requested_outputs
+
+        self._send_in_progress_notification(subscriber)
+
+        try:
+            if self.output_dir is not None:
+                filename = f"{p.metadata['id']}-{job_id}"
+                job_filename = self.output_dir / filename
+            else:
+                job_filename = None
+
+            current_status = JobStatus.running
+            jfmt, outputs = p.execute(data_dict, **extra_execute_parameters)
+
+            if requested_response == RequestedResponse.document.value:
+                outputs = {
+                    'outputs': [outputs]
+                }
+
+            if self.output_dir is not None:
+                LOGGER.debug(f'writing output to {job_filename}')
+                if isinstance(outputs, (dict, list)):
+                    mode = 'w'
+                    data = json.dumps(outputs, sort_keys=True, indent=4)
+                    encoding = 'utf-8'
+                elif isinstance(outputs, bytes):
+                    mode = 'wb'
+                    data = outputs
+                    encoding = None
+                with job_filename.open(mode=mode, encoding=encoding) as fh:
+                    fh.write(data)
+
+            current_status = JobStatus.successful
+
+            self._send_success_notification(subscriber, outputs=outputs)
+
+        except Exception as err:
+            # TODO assess correct exception type and description to help users
+            # NOTE, the /results endpoint should return the error HTTP status
+            # for jobs that failed, the specification says that failing jobs
+            # must still be able to be retrieved with their error message
+            # intact, and the correct HTTP error status at the /results
+            # endpoint, even if the /result endpoint correctly returns the
+            # failure information (i.e. what one might assume is a 200
+            # response).
+
+            current_status = JobStatus.failed
+            code = 'InvalidParameterValue'
+            outputs = {
+                'type': code,
+                'code': code,
+                'description': f'Error executing process: {err}'
+            }
+            LOGGER.exception(err)
+            job_metadata = {
+                'finished': get_current_datetime(),
+                'updated': get_current_datetime(),
+                'status': current_status.value,
+                'location': None,
+                'mimetype': 'application/octet-stream',
+                'message': f'{code}: {outputs["description"]}'
+            }
+
+            jfmt = 'application/json'
+
+            self._send_failed_notification(subscriber)
+
+        return jfmt, outputs, current_status
 
 
     def __repr__(self):
