@@ -305,7 +305,7 @@ class SlurmManager(BaseManager):
 
         # Submit the job
         try:
-            job_id = result.stdout
+            job_id = result.stdout.strip()
             LOGGER.info(f"Job submitted successfully with ID: {job_id}")
         except pyslurm.SlurmError as e:
             LOGGER.error(f"Error submitting job: {e}")
