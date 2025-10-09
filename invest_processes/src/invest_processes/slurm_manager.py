@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional, Tuple
 import uuid
 import subprocess
 import textwrap
+import time
 
 from pygeoapi.process.base import BaseProcessor
 from pygeoapi.process.manager.base import BaseManager
@@ -308,6 +309,7 @@ class SlurmManager(BaseManager):
             LOGGER.info(f"Job submitted successfully with ID: {job_id}")
         except pyslurm.SlurmError as e:
             LOGGER.error(f"Error submitting job: {e}")
+        outputs = {**outputs, 'job_id': job_id}
         return jfmt, outputs
 
 
@@ -362,6 +364,17 @@ class SlurmManager(BaseManager):
             jfmt, outputs = self.submit_slurm_job(p, data_dict)
 
             print(jfmt, outputs)
+
+            while True:
+                status = subprocess.run([
+                    'sacct', '--noheader', '-X',
+                    '-j', outputs['job_id'],
+                    '-o', 'State'
+                ]).strip()
+
+                if status == 'COMPLETED':
+                    break
+                time.sleep(10)
 
             if requested_response == RequestedResponse.document.value:
                 outputs = {
