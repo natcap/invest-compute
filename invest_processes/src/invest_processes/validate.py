@@ -97,14 +97,19 @@ class ValidateProcessor(BaseProcessor):
         script = textwrap.dedent(f"""\
             #!/bin/sh
             #SBATCH --time=10
-            invest validate {datastack_path}
+            invest validate --json {datastack_path}
             """)
 
         with open(path, 'w') as fp:
             fp.write(script)
 
         outputs = {'workspace_dir': workspace_dir}
-        return 'application/json', outputs
+        return , outputs
+
+    def process_output(self, output_filepath):
+        with open(output_filepath) as output_file:
+            output = json.load(output_file)
+        return output
 
     def execute(self, data, outputs=None):
         """Execute the process.

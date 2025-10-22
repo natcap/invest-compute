@@ -283,14 +283,18 @@ class SlurmManager(BaseManager):
     def submit_slurm_job(self, processor, data_dict):
         print(data_dict)
 
-        jfmt, outputs = processor.create_slurm_script(data_dict, 'tmp_script.slurm')
+        # Create a workspace directory
+        workspace_root = os.path.abspath('workspaces')
+        workspace_dir = os.path.join(workspace_root, f'{model_id}_{time.time()}')
+
+        outputs = processor.create_slurm_script(data_dict, 'tmp_script.slurm')
         with open('tmp_script.slurm') as fp:
             print(fp.read())
 
         # Submit the job
         try:
             result = subprocess.run(
-                ['sbatch', '--parsable', 'tmp_script.slurm'],
+                ['sbatch', '--parsable', '--workdir', workspace_dir, 'tmp_script.slurm'],
                 capture_output=True,
                 text=True,
                 check=True)
@@ -306,8 +310,7 @@ class SlurmManager(BaseManager):
         job_id = result.stdout.strip()
         LOGGER.info(f"Job submitted successfully with ID: {job_id}")
 
-        outputs = {**outputs, 'job_id': job_id}
-        return jfmt, outputs
+        return job_id, workspace_dir
 
 
     def _execute_handler_sync(self, p: BaseProcessor, job_id: str,
@@ -358,21 +361,22 @@ class SlurmManager(BaseManager):
 
         current_status = JobStatus.running
 
-        jfmt, outputs = self.submit_slurm_job(p, data_dict)
-
-        print(jfmt, outputs)
+        job_id, workspace_dir = self.submit_slurm_job(p, data_dict)
 
         while True:
             status = subprocess.run([
                 'sacct', '--noheader', '-X',
-                '-j', outputs['job_id'],
+                '-j', job_id,
                 '-o', 'State'
             ], capture_output=True, text=True, check=True).stdout.strip()
-            LOGGER.debug(f'Status of slurm job {outputs["job_id"]}: {status}')
+            LOGGER.debug(f'Status of slurm job {job_id}: {status}')
 
             if status == 'COMPLETED':
                 break
             time.sleep(1)
+
+        outputs = p.process_outputs(os.path.join(workspace_dir), f'slurm-{job_id}.out')
+        print(outputs)
 
         if requested_response == RequestedResponse.document.value:
             outputs = {
@@ -427,7 +431,7 @@ class SlurmManager(BaseManager):
 
         #     self._send_failed_notification(subscriber)
 
-        return jfmt, outputs, current_status
+        return 'application/json', outputs, current_status
 
 
     def __repr__(self):
