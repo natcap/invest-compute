@@ -20,7 +20,7 @@ from pygeoapi.util import (
 LOGGER = logging.getLogger(__name__)
 
 class SlurmManager(BaseManager):
-    """generic Manager ABC"""
+    """Manager that uses slurm"""
 
     def __init__(self, manager_def: dict):
         """
@@ -283,11 +283,11 @@ class SlurmManager(BaseManager):
     def submit_slurm_job(self, processor, data_dict):
         print(data_dict)
 
+        jfmt, outputs = processor.create_slurm_script(data_dict, 'tmp_script.slurm')
         with open('tmp_script.slurm') as fp:
             print(fp.read())
 
-        jfmt, outputs = processor.create_slurm_script(data_dict, 'tmp_script.slurm')
-
+        # Submit the job
         try:
             result = subprocess.run(
                 ['sbatch', '--parsable', 'tmp_script.slurm'],
@@ -301,14 +301,11 @@ class SlurmManager(BaseManager):
         except subprocess.CalledProcessError as e:
             print(e.stdout)
             print(e.stderr)
+            raise RuntimeError('Error when submitting slurm job')
 
+        job_id = result.stdout.strip()
+        LOGGER.info(f"Job submitted successfully with ID: {job_id}")
 
-        # Submit the job
-        try:
-            job_id = result.stdout.strip()
-            LOGGER.info(f"Job submitted successfully with ID: {job_id}")
-        except pyslurm.SlurmError as e:
-            LOGGER.error(f"Error submitting job: {e}")
         outputs = {**outputs, 'job_id': job_id}
         return jfmt, outputs
 
@@ -371,11 +368,11 @@ class SlurmManager(BaseManager):
                 '-j', outputs['job_id'],
                 '-o', 'State'
             ], capture_output=True, text=True, check=True).stdout.strip()
-            print(status)
+            LOGGER.debug(f'Status of slurm job {outputs["job_id"]}: {status}')
 
             if status == 'COMPLETED':
                 break
-            time.sleep(10)
+            time.sleep(1)
 
         if requested_response == RequestedResponse.document.value:
             outputs = {
