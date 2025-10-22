@@ -2,6 +2,7 @@ import importlib
 import logging
 import os
 import tempfile
+import textwrap
 import time
 
 from natcap.invest import datastack, models, spec, utils
