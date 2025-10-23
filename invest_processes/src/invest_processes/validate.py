@@ -103,8 +103,7 @@ class ValidateProcessor(BaseProcessor):
         with open(path, 'w') as fp:
             fp.write(script)
 
-        outputs = {'workspace_dir': workspace_dir}
-        return , outputs
+        return {'workspace_dir': workspace_dir}
 
     def process_output(self, output_filepath):
         with open(output_filepath) as output_file:
