@@ -376,7 +376,7 @@ class SlurmManager(BaseManager):
                 break
             time.sleep(1)
 
-        outputs = p.process_output(os.path.join(workspace_dir), f'slurm-{job_id}.out')
+        outputs = p.process_output(os.path.join(workspace_dir, f'slurm-{job_id}.out'))
         print(outputs)
 
         if requested_response == RequestedResponse.document.value:
