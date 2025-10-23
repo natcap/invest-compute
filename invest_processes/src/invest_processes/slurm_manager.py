@@ -286,7 +286,7 @@ class SlurmManager(BaseManager):
 
         # Create a workspace directory
         workspace_root = os.path.abspath('workspaces')
-        workspace_dir = os.path.join(workspace_root, f'{model_id}_{time.time()}')
+        workspace_dir = os.path.join(workspace_root, f'slurm_wksp_{time.time()}')
 
         outputs = processor.create_slurm_script(data_dict, 'tmp_script.slurm')
         with open('tmp_script.slurm') as fp:
