@@ -295,7 +295,7 @@ class SlurmManager(BaseManager):
         # Submit the job
         try:
             result = subprocess.run(
-                ['sbatch', '--parsable', '--workdir', workspace_dir, 'tmp_script.slurm'],
+                ['sbatch', '--parsable', '--chdir', workspace_dir, 'tmp_script.slurm'],
                 capture_output=True,
                 text=True,
                 check=True)
