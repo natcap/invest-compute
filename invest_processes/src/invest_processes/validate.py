@@ -108,7 +108,10 @@ class ValidateProcessor(BaseProcessor):
 
     def process_output(self, output_filepath):
         with open(output_filepath) as output_file:
-            output = json.load(output_file)
+            content = output_file.read()
+        print(content)
+        output = json.loads(content)
+        print(output)
         return output
 
     def execute(self, data, outputs=None):
