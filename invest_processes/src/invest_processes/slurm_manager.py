@@ -391,16 +391,16 @@ class SlurmManager(BaseManager):
         LOGGER.debug(f'Exit code of slurm job {job_id}: {exit_code}')
         print(exit_code)
 
-        workdir = subprocess.run([
-            'sacct', '--noheader', '-X', '-j', job_id, '-o', 'WorkDir'
-        ], capture_output=True, text=True, check=True).stdout
-        print(workdir)
+        # workdir = subprocess.run([
+        #     'sacct', '--noheader', '-X', '-j', job_id, '-o', 'WorkDir'
+        # ], capture_output=True, text=True, check=True).stdout
+        # print(workdir)
 
         if exit_code != 0:
             LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
 
         outputs = p.process_output(os.path.join(workspace_dir, 'stdout.log'))
-        outputs['workspace'] = workdir
+        outputs['workspace'] = workspace_dir
         print(outputs)
 
         # copy slurm job workspace to public bucket
