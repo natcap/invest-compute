@@ -287,9 +287,11 @@ class SlurmManager(BaseManager):
         # Create a workspace directory
         workspace_root = os.path.abspath('workspaces')
         workspace_dir = os.path.join(workspace_root, f'slurm_wksp_{time.time()}')
+        # create the slurm script in the workspace so that the user can see it
+        script_path = os.path.join(workspace_dir, 'script.slurm')
 
-        outputs = processor.create_slurm_script(data_dict, 'tmp_script.slurm')
-        with open('tmp_script.slurm') as fp:
+        processor.create_slurm_script(data_dict, workspace_dir, script_path)
+        with open(script_path) as fp:
             print(fp.read())
 
         # Submit the job
@@ -297,9 +299,9 @@ class SlurmManager(BaseManager):
             result = subprocess.run([
                 'sbatch', '--parsable',
                 '--chdir', workspace_dir,
-                '--output', '%j_stdout.log',
-                '--error', '%j_stderr.log',
-                'tmp_script.slurm'],
+                '--output', 'stdout.log',
+                '--error', 'stderr.log',
+                script_path],
                 capture_output=True,
                 text=True,
                 check=True)
@@ -369,6 +371,7 @@ class SlurmManager(BaseManager):
         job_id, workspace_dir = self.submit_slurm_job(p, data_dict)
 
         while True:
+            # check the 'state' string from the job data in sacct
             status = subprocess.run([
                 'sacct', '--noheader', '-X',
                 '-j', job_id,
@@ -380,8 +383,26 @@ class SlurmManager(BaseManager):
                 break
             time.sleep(1)
 
+        # get the exit code from the job data in sacct
+        exit_code = int(subprocess.run([
+            'sacct', '--noheader', '-X', '-j', job_id, '-o', 'ExitCode'
+        ], capture_output=True, text=True, check=True).stdout.strip())
+        LOGGER.debug(f'Exit code of slurm job {job_id}: {exit_code}')
+
+        workdir = subprocess.run([
+            'sacct', '--noheader', '-X', '-j', job_id, '-o', 'WorkDir'
+        ], capture_output=True, text=True, check=True).stdout.strip()
+
+        if exit_code != 0:
+            LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
+
         outputs = p.process_output(os.path.join(workspace_dir, f'{job_id}_stdout.log'))
+        outputs['workspace'] = workdir
         print(outputs)
+
+        # copy slurm job workspace to public bucket
+        LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
+
 
         if requested_response == RequestedResponse.document.value:
             outputs = {

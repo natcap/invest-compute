@@ -28,7 +28,11 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.get_data(as_text=True))
         print(data)
-        self.assertTrue(os.path.exists(data['workspace_dir']))
+        self.assertEqual(set(data.keys()), 'workspace')
+        self.assertEqual(
+            set(os.listdir(data['workspace'])),
+            {'stdout.log', 'stderr.log', 'script.slurm', 'carbon_workspace'}
+        )
 
     def testValidateProcessMetadata(self):
         response = self.client.get(f'/processes/validate')
@@ -43,11 +47,15 @@ class PyGeoAPIServerTests(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.get_data(as_text=True))
-        self.assertEqual(data, {
-            'validation_results': [
-                {
-                    'input_ids': ['workspace_dir'],
-                    'error_message': 'Key is missing from the args dict'
-                }
-            ]
-        })
+        self.assertEqual(set(data.keys()), {'validation_results', 'workspace'})
+        self.assertEqual(
+            data['validation_results'],
+            [{
+                'input_ids': ['workspace_dir'],
+                'error_message': 'Key is missing from the args dict'
+            }]
+        )
+        self.assertEqual(
+            set(os.listdir(data['workspace'])),
+            {'stdout.log', 'stderr.log', 'script.slurm'}
+        )

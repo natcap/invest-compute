@@ -65,7 +65,7 @@ class ExecuteProcessor(BaseProcessor):
 
         super().__init__(processor_def, PROCESS_METADATA)
 
-    def create_slurm_script(self, data, path):
+    def create_slurm_script(self, data, workspace_dir, path):
 
         # Extract model ID and parameters from the datastack file
         datastack_path = data.get('datastack_path')
@@ -77,22 +77,19 @@ class ExecuteProcessor(BaseProcessor):
                 1, "Error when parsing JSON datastack:\n    " + str(error))
 
         # Create a workspace directory
-        workspace_root = os.path.abspath('workspaces')
-        workspace_dir = os.path.join(workspace_root, f'{model_id}_{time.time()}')
+        workspace_dir = os.path.join(workspace_dir, f'{model_id}_workspace')
 
         script = textwrap.dedent(f"""\
             #!/bin/sh
             #SBATCH --time=10
-            echo 'hello from a slurm job' && sleep 10
             invest run --datastack {datastack_path} --workspace {workspace_dir} {model_id}
             """)
 
         with open(path, 'w') as fp:
             fp.write(script)
 
-        outputs = {'workspace_dir': workspace_dir}
-        return 'application/json', outputs
-
+    def process_output(self, output_filepath):
+        return {}
 
     def execute(self, data, outputs=None):
         """Execute the process.

@@ -80,7 +80,7 @@ class ValidateProcessor(BaseProcessor):
 
         super().__init__(processor_def, PROCESS_METADATA)
 
-    def create_slurm_script(self, data, path):
+    def create_slurm_script(self, data, workspace_dir, path):
 
         # Extract model ID and parameters from the datastack file
         datastack_path = data.get('datastack_path')
@@ -103,8 +103,6 @@ class ValidateProcessor(BaseProcessor):
 
         with open(path, 'w') as fp:
             fp.write(script)
-
-        return {'workspace_dir': workspace_dir}
 
     def process_output(self, output_filepath):
         with open(output_filepath) as output_file:
