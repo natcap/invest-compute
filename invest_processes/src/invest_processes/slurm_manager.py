@@ -287,6 +287,7 @@ class SlurmManager(BaseManager):
         # Create a workspace directory
         workspace_root = os.path.abspath('workspaces')
         workspace_dir = os.path.join(workspace_root, f'slurm_wksp_{time.time()}')
+        os.makedirs(workspace_dir)
         # create the slurm script in the workspace so that the user can see it
         script_path = os.path.join(workspace_dir, 'script.slurm')
 
