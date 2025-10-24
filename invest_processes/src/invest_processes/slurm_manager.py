@@ -387,7 +387,7 @@ class SlurmManager(BaseManager):
         # get the exit code from the job data in sacct
         exit_code = int(subprocess.run([
             'sacct', '--noheader', '-X', '-j', job_id, '-o', 'ExitCode'
-        ], capture_output=True, text=True, check=True).stdout.strip())
+        ], capture_output=True, text=True, check=True).stdout.strip().split(':')[0])
         LOGGER.debug(f'Exit code of slurm job {job_id}: {exit_code}')
 
         workdir = subprocess.run([
