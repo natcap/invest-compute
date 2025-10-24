@@ -294,8 +294,12 @@ class SlurmManager(BaseManager):
 
         # Submit the job
         try:
-            result = subprocess.run(
-                ['sbatch', '--parsable', '--chdir', workspace_dir, 'tmp_script.slurm'],
+            result = subprocess.run([
+                'sbatch', '--parsable',
+                '--chdir', workspace_dir,
+                '--output', '%j_stdout.log',
+                '--error', '%j_stderr.log',
+                'tmp_script.slurm'],
                 capture_output=True,
                 text=True,
                 check=True)
