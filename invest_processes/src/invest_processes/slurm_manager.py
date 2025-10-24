@@ -397,7 +397,7 @@ class SlurmManager(BaseManager):
         if exit_code != 0:
             LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
 
-        outputs = p.process_output(os.path.join(workspace_dir, f'{job_id}_stdout.log'))
+        outputs = p.process_output(os.path.join(workspace_dir, 'stdout.log'))
         outputs['workspace'] = workdir
         print(outputs)
 
