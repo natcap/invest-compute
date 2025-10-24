@@ -110,7 +110,14 @@ class ValidateProcessor(BaseProcessor):
         with open(output_filepath) as output_file:
             content = output_file.read()
         print(content)
-        output = json.loads(content)
+        json_output = json.loads(content)
+
+        result = {'validation_results': []}
+        for (input_ids, error_message) in json_output['validation_results']:
+            outputs['validation_results'].append({
+                'input_ids': input_ids,
+                'error_message': error_message
+            })
         print(output)
         return output
 

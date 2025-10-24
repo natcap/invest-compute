@@ -44,7 +44,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.get_data(as_text=True))
         self.assertEqual(data, {
-            'validation_errors': [
+            'validation_results': [
                 {
                     'input_ids': ['workspace_dir'],
                     'error_message': 'Key is missing from the args dict'
