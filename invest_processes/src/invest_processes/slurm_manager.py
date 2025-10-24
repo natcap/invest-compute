@@ -389,10 +389,12 @@ class SlurmManager(BaseManager):
             'sacct', '--noheader', '-X', '-j', job_id, '-o', 'ExitCode'
         ], capture_output=True, text=True, check=True).stdout.strip().split(':')[0])
         LOGGER.debug(f'Exit code of slurm job {job_id}: {exit_code}')
+        print(exit_code)
 
         workdir = subprocess.run([
             'sacct', '--noheader', '-X', '-j', job_id, '-o', 'WorkDir'
-        ], capture_output=True, text=True, check=True).stdout.strip()
+        ], capture_output=True, text=True, check=True).stdout
+        print(workdir)
 
         if exit_code != 0:
             LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
