@@ -114,12 +114,12 @@ class ValidateProcessor(BaseProcessor):
 
         result = {'validation_results': []}
         for (input_ids, error_message) in json_output['validation_results']:
-            outputs['validation_results'].append({
+            result['validation_results'].append({
                 'input_ids': input_ids,
                 'error_message': error_message
             })
-        print(output)
-        return output
+        print(result)
+        return result
 
     def execute(self, data, outputs=None):
         """Execute the process.
