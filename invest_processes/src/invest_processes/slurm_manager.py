@@ -249,13 +249,6 @@ class SlurmManager(BaseManager):
         if processor.supports_outputs:
             extra_execute_parameters['outputs'] = requested_outputs
 
-        # try:
-        if self.output_dir is not None:
-            filename = f"{processor.metadata['id']}-{job_id}"
-            job_filename = self.output_dir / filename
-        else:
-            job_filename = None
-
         current_status = JobStatus.running
 
         job_id, workspace_dir = self.submit_slurm_job(processor, data_dict)
@@ -293,19 +286,6 @@ class SlurmManager(BaseManager):
             outputs = {
                 'outputs': [outputs]
             }
-
-        if self.output_dir is not None:
-            LOGGER.debug(f'writing output to {job_filename}')
-            if isinstance(outputs, (dict, list)):
-                mode = 'w'
-                data = json.dumps(outputs, sort_keys=True, indent=4)
-                encoding = 'utf-8'
-            elif isinstance(outputs, bytes):
-                mode = 'wb'
-                data = outputs
-                encoding = None
-            with job_filename.open(mode=mode, encoding=encoding) as fh:
-                fh.write(data)
 
         current_status = JobStatus.successful
 
