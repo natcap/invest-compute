@@ -249,72 +249,64 @@ class SlurmManager(BaseManager):
         if processor.supports_outputs:
             extra_execute_parameters['outputs'] = requested_outputs
 
-        current_status = JobStatus.running
+        try:
+            current_status = JobStatus.running
 
-        job_id, workspace_dir = self.submit_slurm_job(processor, data_dict)
+            job_id, workspace_dir = self.submit_slurm_job(processor, data_dict)
 
-        # wait for the slurm job to complete
-        while True:
-            # check the 'state' string from the job data in sacct
-            status = subprocess.run([
-                'sacct', '--noheader', '-X',
-                '-j', job_id,
-                '-o', 'State'
-            ], capture_output=True, text=True, check=True).stdout.strip()
-            LOGGER.debug(f'Status of slurm job {job_id}: {status}')
+            # wait for the slurm job to complete
+            while True:
+                # check the 'state' string from the job data in sacct
+                status = subprocess.run([
+                    'sacct', '--noheader', '-X',
+                    '-j', job_id,
+                    '-o', 'State'
+                ], capture_output=True, text=True, check=True).stdout.strip()
+                LOGGER.debug(f'Status of slurm job {job_id}: {status}')
 
-            if status == 'COMPLETED':
-                break
-            time.sleep(1)
+                if status == 'COMPLETED':
+                    break
+                time.sleep(1)
 
-        # get the exit code from the job data in sacct
-        exit_code = int(subprocess.run([
-            'sacct', '--noheader', '-X', '-j', job_id, '-o', 'ExitCode'
-        ], capture_output=True, text=True, check=True).stdout.strip().split(':')[0])
-        LOGGER.debug(f'Exit code of slurm job {job_id}: {exit_code}')
+            # get the exit code from the job data in sacct
+            exit_code = int(subprocess.run([
+                'sacct', '--noheader', '-X', '-j', job_id, '-o', 'ExitCode'
+            ], capture_output=True, text=True, check=True).stdout.strip().split(':')[0])
+            LOGGER.debug(f'Exit code of slurm job {job_id}: {exit_code}')
 
-        if exit_code != 0:
-            LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
+            if exit_code != 0:
+                LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
 
-        outputs = processor.process_output(os.path.join(workspace_dir, 'stdout.log'))
-        outputs['workspace'] = workspace_dir
+            outputs = processor.process_output(os.path.join(workspace_dir, 'stdout.log'))
+            outputs['workspace'] = workspace_dir
 
-        # TODO: copy slurm job workspace to public bucket
-        # LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
+            # TODO: copy slurm job workspace to public bucket
+            # LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
 
-        if requested_response == RequestedResponse.document.value:
+            if requested_response == RequestedResponse.document.value:
+                outputs = {
+                    'outputs': [outputs]
+                }
+            current_status = JobStatus.successful
+
+        except Exception as err:
+            # TODO assess correct exception type and description to help users
+            # NOTE, the /results endpoint should return the error HTTP status
+            # for jobs that failed, the specification says that failing jobs
+            # must still be able to be retrieved with their error message
+            # intact, and the correct HTTP error status at the /results
+            # endpoint, even if the /result endpoint correctly returns the
+            # failure information (i.e. what one might assume is a 200
+            # response).
+
+            current_status = JobStatus.failed
+            code = 'InvalidParameterValue'
             outputs = {
-                'outputs': [outputs]
+                'type': code,
+                'code': code,
+                'description': f'Error executing process: {err}'
             }
-
-        current_status = JobStatus.successful
-
-        # except Exception as err:
-        #     # TODO assess correct exception type and description to help users
-        #     # NOTE, the /results endpoint should return the error HTTP status
-        #     # for jobs that failed, the specification says that failing jobs
-        #     # must still be able to be retrieved with their error message
-        #     # intact, and the correct HTTP error status at the /results
-        #     # endpoint, even if the /result endpoint correctly returns the
-        #     # failure information (i.e. what one might assume is a 200
-        #     # response).
-
-        #     current_status = JobStatus.failed
-        #     code = 'InvalidParameterValue'
-        #     outputs = {
-        #         'type': code,
-        #         'code': code,
-        #         'description': f'Error executing process: {err}'
-        #     }
-        #     LOGGER.exception(err)
-        #     job_metadata = {
-        #         'finished': get_current_datetime(),
-        #         'updated': get_current_datetime(),
-        #         'status': current_status.value,
-        #         'location': None,
-        #         'mimetype': 'application/octet-stream',
-        #         'message': f'{code}: {outputs["description"]}'
-        #     }
+            LOGGER.exception(err)
 
         return job_id, 'application/json', outputs, current_status
 
@@ -334,8 +326,9 @@ class SlurmManager(BaseManager):
         os.makedirs(workspace_dir)
         # create the slurm script in the workspace so that the user can see it
         script_path = os.path.join(workspace_dir, 'script.slurm')
-
-        processor.create_slurm_script(data_dict, workspace_dir, script_path)
+        script = processor.create_slurm_script(**data_dict, workspace_dir=workspace_dir)
+        with open(script_path, 'w') as fp:
+            fp.write(script)
 
         LOGGER.debug('Content of slurm script to be submitted:\n')
         with open(script_path) as fp:

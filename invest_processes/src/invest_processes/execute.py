@@ -65,11 +65,16 @@ class ExecuteProcessor(BaseProcessor):
 
         super().__init__(processor_def, PROCESS_METADATA)
 
-    def create_slurm_script(self, data, workspace_dir, path):
+    def create_slurm_script(self, datastack_path, workspace_dir):
+        """Create a script to run with sbatch.
 
-        # Extract model ID and parameters from the datastack file
-        datastack_path = data.get('datastack_path')
+        Args:
+            datastack_path: path to the user provided invest datastack to execute
+            workspace_dir: path to the directory that the slurm job will run in
 
+        Returns:
+            string contents of the script
+        """
         try:
             model_id = datastack.extract_parameter_set(datastack_path).model_id
         except Exception as error:
@@ -79,14 +84,11 @@ class ExecuteProcessor(BaseProcessor):
         # Create a workspace directory
         workspace_dir = os.path.join(workspace_dir, f'{model_id}_workspace')
 
-        script = textwrap.dedent(f"""\
+        return textwrap.dedent(f"""\
             #!/bin/sh
             #SBATCH --time=10
             invest run --datastack {datastack_path} --workspace {workspace_dir} {model_id}
             """)
-
-        with open(path, 'w') as fp:
-            fp.write(script)
 
     def process_output(self, output_filepath):
         return {}
