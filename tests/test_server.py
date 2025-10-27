@@ -28,7 +28,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.get_data(as_text=True))
         print(data)
-        self.assertEqual(set(data.keys()), 'workspace')
+        self.assertEqual(set(data.keys()), {'workspace'})
         self.assertEqual(
             set(os.listdir(data['workspace'])),
             {'stdout.log', 'stderr.log', 'script.slurm', 'carbon_workspace'}
