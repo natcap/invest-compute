@@ -113,14 +113,9 @@ class SlurmManager(BaseManager):
         raise NotImplementedError()
 
     def execute_process(
-            self,
-            process_id: str,
-            data_dict: dict,
-            execution_mode: Optional[RequestedProcessExecutionMode] = None,
-            requested_outputs: Optional[dict] = None,
-            subscriber: Optional[Subscriber] = None,
-            requested_response: Optional[RequestedResponse] = RequestedResponse.raw.value  # noqa
-    ) -> Tuple[str, Any, JobStatus, Optional[Dict[str, str]]]:
+            self, process_id, data_dict, execution_mode=None,
+            requested_outputs=None, subscriber=None,
+            requested_response=RequestedResponse.raw.value):
         """
         Default process execution handler
 
@@ -387,7 +382,6 @@ class SlurmManager(BaseManager):
         LOGGER.info(f"Job submitted successfully with ID: {job_id}")
 
         return job_id, workspace_dir
-
 
 
     def __repr__(self):
