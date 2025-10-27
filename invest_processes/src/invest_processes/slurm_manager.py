@@ -1,5 +1,6 @@
 import json
 import logging
+from multiprocessing import dummy
 import os
 from typing import Any, Dict, Optional, Tuple
 import uuid
@@ -14,8 +15,7 @@ from pygeoapi.util import (
     JobStatus,
     ProcessExecutionMode,
     RequestedProcessExecutionMode,
-    RequestedResponse,
-    Subscriber
+    RequestedResponse
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -50,9 +50,7 @@ class SlurmManager(BaseManager):
         :returns: dict of list of jobs (identifier, status, process identifier)
                   and numberMatched
         """
-
-        all_jobs = pyslurm.db.Jobs().get()
-        return all_jobs
+        raise NotImplementedError()
 
     def add_job(self, job_metadata: dict) -> str:
         """
@@ -62,48 +60,11 @@ class SlurmManager(BaseManager):
 
         :returns: `str` added job identifier
         """
-        LOGGER.info('adding job')
-
-        print(job_metadata)
-
-        script = textwrap.dedent("""\
-            #!/bin/sh
-            #SBATCH --time=1
-            echo 'hello from a slurm job' && sleep 10
-            """)
-
-        with open('tmp_script.slurm', 'w') as fp:
-            fp.write(script)
-
-        with open('tmp_script.slurm') as fp:
-            print(fp.read())
-
-        try:
-            result = subprocess.run(
-                ['sbatch', '--parsable', 'tmp_script.slurm'],
-                capture_output=True,
-                text=True,
-                check=True)
-            print(result)
-            print(result.stdout)
-
-            LOGGER.info(result.stdout)
-        except subprocess.CalledProcessError as e:
-            print(e.stdout)
-            print(e.stderr)
-
-
-        # Submit the job
-        try:
-            job_id = result.stdout.strip()
-            LOGGER.info(f"Job submitted successfully with ID: {job_id}")
-        except pyslurm.SlurmError as e:
-            LOGGER.error(f"Error submitting job: {e}")
-        return job_id
+        raise NotImplementedError()
 
     def update_job(self, job_id: str, update_dict: dict) -> bool:
         """
-        Updates a job
+        Update a job
 
         :param job_id: job identifier
         :param update_dict: `dict` of property updates
@@ -115,7 +76,7 @@ class SlurmManager(BaseManager):
 
     def get_job(self, job_id: str) -> dict:
         """
-        Get a job (!)
+        Get a job
 
         :param job_id: job identifier
 
@@ -123,15 +84,7 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        job_info = pyslurm.db.Job.load(job_id, with_script=True)
-
-        if job_info:
-            print(f"Job Name: {job_info.job_name}")
-            print(f"Job State: {job_info.state}")
-            print(f"Batch Script: {job_info.script}")
-        else:
-            print(f"Job with ID {job_id} not found.")
-        return job_info
+        raise NotImplementedError()
 
     def get_job_result(self, job_id: str) -> Tuple[str, Any]:
         """
@@ -145,8 +98,7 @@ class SlurmManager(BaseManager):
                                          be returned
         :returns: `tuple` of mimetype and raw output
         """
-
-        raise JobResultNotFoundError()
+        raise NotImplementedError()
 
     def delete_job(self, job_id: str) -> bool:
         """
@@ -158,16 +110,7 @@ class SlurmManager(BaseManager):
                                    known job
         :returns: `bool` of status result
         """
-        step_id = 0     # Replace with the step ID (0 for the main job step)
-        job_step = pyslurm.JobStep(job_id, step_id)
-
-        try:
-            # Cancel the job step
-            job_step.cancel()
-
-            LOGGER.info(f"Successfully cancelled job step {job_id}.{step_id}")
-        except pyslurm.RPCError as e:
-            LOGGER.error(f"Failed to cancel job step {job_id}.{step_id}: {e}")
+        raise NotImplementedError()
 
     def execute_process(
             self,
@@ -203,15 +146,7 @@ class SlurmManager(BaseManager):
                   optionally additional HTTP headers to include in the final
                   response
         """
-
-        job_id = str(uuid.uuid1())
         processor = self.get_processor(process_id)
-        processor.set_job_id(job_id)
-        extra_execute_handler_parameters = {
-            'requested_response': requested_response
-        }
-
-        print(data_dict)
 
         if execution_mode == RequestedProcessExecutionMode.respond_async:
             job_control_options = processor.metadata.get(
@@ -246,95 +181,27 @@ class SlurmManager(BaseManager):
             handler = self._execute_handler_sync
             response_headers = None
 
-        # Add Job before returning any response.
-        current_status = JobStatus.accepted
-        # job_metadata = {
-        #     'type': 'process',
-        #     'identifier': job_id,
-        #     'process_id': process_id,
-        #     'created': get_current_datetime(),
-        #     'started': get_current_datetime(),
-        #     'updated': get_current_datetime(),
-        #     'finished': None,
-        #     'status': current_status.value,
-        #     'location': None,
-        #     'mimetype': 'application/octet-stream',
-        #     'message': 'Job accepted and ready for execution',
-        #     'progress': 5
-        # }
-        # self.add_job(job_metadata)
-
-        # only pass subscriber if supported, otherwise this breaks
-        # existing managers
-        if self.supports_subscribing:
-            extra_execute_handler_parameters['subscriber'] = subscriber
-
-        # TODO: handler's response could also be allowed to include more HTTP
-        # headers
-        mime_type, outputs, status = handler(
+        job_id, mime_type, outputs, status = handler(
             processor,
-            job_id,
             data_dict,
             requested_outputs,
-            **extra_execute_handler_parameters)
+            requested_response=requested_response)
 
         return job_id, mime_type, outputs, status, response_headers
 
-
-    def submit_slurm_job(self, processor, data_dict):
-        print(data_dict)
-
-        # Create a workspace directory
-        workspace_root = os.path.abspath('workspaces')
-        workspace_dir = os.path.join(workspace_root, f'slurm_wksp_{time.time()}')
-        os.makedirs(workspace_dir)
-        # create the slurm script in the workspace so that the user can see it
-        script_path = os.path.join(workspace_dir, 'script.slurm')
-
-        processor.create_slurm_script(data_dict, workspace_dir, script_path)
-        with open(script_path) as fp:
-            print(fp.read())
-
-        # Submit the job
-        try:
-            result = subprocess.run([
-                'sbatch', '--parsable',
-                '--chdir', workspace_dir,
-                '--output', 'stdout.log',
-                '--error', 'stderr.log',
-                script_path],
-                capture_output=True,
-                text=True,
-                check=True)
-            print(result)
-            print(result.stdout)
-
-            LOGGER.info(result.stdout)
-        except subprocess.CalledProcessError as e:
-            print(e.stdout)
-            print(e.stderr)
-            raise RuntimeError('Error when submitting slurm job')
-
-        job_id = result.stdout.strip()
-        LOGGER.info(f"Job submitted successfully with ID: {job_id}")
-
-        return job_id, workspace_dir
-
-
-    def _execute_handler_sync(self, p: BaseProcessor, job_id: str,
-                              data_dict: dict,
-                              requested_outputs: Optional[dict] = None,
-                              subscriber: Optional[Subscriber] = None,
-                              requested_response: Optional[RequestedResponse] = RequestedResponse.raw.value  # noqa
-                              ) -> Tuple[str, Any, JobStatus]:
+    def _execute_handler_async(self, processor: BaseProcessor,
+                               data_dict: dict,
+                               requested_outputs: Optional[dict] = None,
+                               subscriber: Optional[Subscriber] = None,
+                               requested_response: Optional[RequestedResponse] = RequestedResponse.raw.value  # noqa
+                               ):
         """
-        Synchronous execution handler
+        This private execution handler executes a process in a background
+        thread using `multiprocessing.dummy`
 
-        If the manager has defined `output_dir`, then the result
-        will be written to disk
-        output store. There is no clean-up of old process outputs.
+        https://docs.python.org/3/library/multiprocessing.html#module-multiprocessing.dummy  # noqa
 
-        :param p: `pygeoapi.process` object
+        :param processor: `pygeoapi.process` object
         :param job_id: job identifier
         :param data_dict: `dict` of data parameters
         :param requested_outputs: `dict` optionally specifying the subset of
@@ -348,6 +215,42 @@ class SlurmManager(BaseManager):
         :param requested_response: `RequestedResponse` optionally specifying
                                    raw or document (default is `raw`)
 
+        :returns: tuple of None (i.e. initial response payload)
+                  and JobStatus.accepted (i.e. initial job status)
+        """
+
+        args = (processor, data_dict, requested_outputs, subscriber,
+                requested_response)
+
+        _process = dummy.Process(target=self._execute_handler_sync, args=args)
+        _process.start()
+
+        return 'application/json', None, JobStatus.accepted
+
+    def _execute_handler_sync(self, p: BaseProcessor,
+                              data_dict: dict,
+                              requested_outputs: Optional[dict] = None,
+                              requested_response: Optional[RequestedResponse] = RequestedResponse.raw.value  # noqa
+                              ) -> Tuple[str, Any, JobStatus]:
+        """
+        Synchronous execution handler
+
+        If the manager has defined `output_dir`, then the result
+        will be written to disk
+        output store. There is no clean-up of old process outputs.
+
+        :param p: `pygeoapi.process` object
+        :param data_dict: `dict` of data parameters
+        :param requested_outputs: `dict` optionally specifying the subset of
+                                  required outputs - defaults to all outputs.
+                                  The value of any key may be an object and
+                                  include the property `transmissionMode`
+                                  (defaults to `value`)
+                                  Note: 'optional' is for backward
+                                  compatibility.
+        :param requested_response: `RequestedResponse` optionally specifying
+                                   raw or document (default is `raw`)
+
         :returns: tuple of MIME type, response payload and status
         """
 
@@ -357,8 +260,6 @@ class SlurmManager(BaseManager):
         # otherwise this breaks existing processes
         if p.supports_outputs:
             extra_execute_parameters['outputs'] = requested_outputs
-
-        self._send_in_progress_notification(subscriber)
 
         # try:
         if self.output_dir is not None:
@@ -371,6 +272,7 @@ class SlurmManager(BaseManager):
 
         job_id, workspace_dir = self.submit_slurm_job(p, data_dict)
 
+        # wait for the slurm job to complete
         while True:
             # check the 'state' string from the job data in sacct
             status = subprocess.run([
@@ -389,23 +291,15 @@ class SlurmManager(BaseManager):
             'sacct', '--noheader', '-X', '-j', job_id, '-o', 'ExitCode'
         ], capture_output=True, text=True, check=True).stdout.strip().split(':')[0])
         LOGGER.debug(f'Exit code of slurm job {job_id}: {exit_code}')
-        print(exit_code)
-
-        # workdir = subprocess.run([
-        #     'sacct', '--noheader', '-X', '-j', job_id, '-o', 'WorkDir'
-        # ], capture_output=True, text=True, check=True).stdout
-        # print(workdir)
 
         if exit_code != 0:
             LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
 
         outputs = p.process_output(os.path.join(workspace_dir, 'stdout.log'))
         outputs['workspace'] = workspace_dir
-        print(outputs)
 
-        # copy slurm job workspace to public bucket
-        LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
-
+        # TODO: copy slurm job workspace to public bucket
+        # LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
 
         if requested_response == RequestedResponse.document.value:
             outputs = {
@@ -426,8 +320,6 @@ class SlurmManager(BaseManager):
                 fh.write(data)
 
         current_status = JobStatus.successful
-
-        self._send_success_notification(subscriber, outputs=outputs)
 
         # except Exception as err:
         #     # TODO assess correct exception type and description to help users
@@ -456,11 +348,53 @@ class SlurmManager(BaseManager):
         #         'message': f'{code}: {outputs["description"]}'
         #     }
 
-        #     jfmt = 'application/json'
+        return job_id, 'application/json', outputs, current_status
 
-        #     self._send_failed_notification(subscriber)
+    def submit_slurm_job(self, processor, data_dict):
+        """Submit a slurm job to execute the process.
 
-        return 'application/json', outputs, current_status
+        Args:
+            processor (Processor): processor to be executed
+            data_dict (dict): user data to pass to the processor
+
+        Returns:
+            job_id, workspace_dir
+        """
+        # Create a workspace directory
+        workspace_root = os.path.abspath('workspaces')
+        workspace_dir = os.path.join(workspace_root, f'slurm_wksp_{time.time()}')
+        os.makedirs(workspace_dir)
+        # create the slurm script in the workspace so that the user can see it
+        script_path = os.path.join(workspace_dir, 'script.slurm')
+
+        processor.create_slurm_script(data_dict, workspace_dir, script_path)
+
+        LOGGER.debug('Content of slurm script to be submitted:\n')
+        with open(script_path) as fp:
+            LOGGER.debug(fp.read())
+
+        # Submit the job
+        try:
+            args = [
+                'sbatch', '--parsable',
+                '--chdir', workspace_dir,
+                '--output', 'stdout.log',
+                '--error', 'stderr.log',
+                script_path]
+            LOGGER.info(
+                f'Submitting slurm job with the following command:\n{args}')
+            result = subprocess.run(
+                args, capture_output=True, text=True, check=True)
+            LOGGER.info(f'stdout from sbatch: {result.stdout}')
+
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError('Error when submitting slurm job') from e
+
+        job_id = result.stdout.strip()
+        LOGGER.info(f"Job submitted successfully with ID: {job_id}")
+
+        return job_id, workspace_dir
+
 
 
     def __repr__(self):
