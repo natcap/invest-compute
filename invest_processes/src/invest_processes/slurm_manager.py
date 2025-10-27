@@ -189,12 +189,8 @@ class SlurmManager(BaseManager):
 
         return job_id, mime_type, outputs, status, response_headers
 
-    def _execute_handler_async(self, processor: BaseProcessor,
-                               data_dict: dict,
-                               requested_outputs: Optional[dict] = None,
-                               subscriber: Optional[Subscriber] = None,
-                               requested_response: Optional[RequestedResponse] = RequestedResponse.raw.value  # noqa
-                               ):
+    def _execute_handler_async(self, processor, data_dict, requested_outputs=None,
+                               subscriber=None, requested_response=RequestedResponse.raw.value):
         """
         This private execution handler executes a process in a background
         thread using `multiprocessing.dummy`
@@ -227,11 +223,8 @@ class SlurmManager(BaseManager):
 
         return 'application/json', None, JobStatus.accepted
 
-    def _execute_handler_sync(self, p: BaseProcessor,
-                              data_dict: dict,
-                              requested_outputs: Optional[dict] = None,
-                              requested_response: Optional[RequestedResponse] = RequestedResponse.raw.value  # noqa
-                              ) -> Tuple[str, Any, JobStatus]:
+    def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
+                              requested_response=RequestedResponse.raw.value):
         """
         Synchronous execution handler
 
@@ -239,7 +232,7 @@ class SlurmManager(BaseManager):
         will be written to disk
         output store. There is no clean-up of old process outputs.
 
-        :param p: `pygeoapi.process` object
+        :param processor: `pygeoapi.process` object
         :param data_dict: `dict` of data parameters
         :param requested_outputs: `dict` optionally specifying the subset of
                                   required outputs - defaults to all outputs.
@@ -258,19 +251,19 @@ class SlurmManager(BaseManager):
 
         # only pass requested_outputs if supported,
         # otherwise this breaks existing processes
-        if p.supports_outputs:
+        if processor.supports_outputs:
             extra_execute_parameters['outputs'] = requested_outputs
 
         # try:
         if self.output_dir is not None:
-            filename = f"{p.metadata['id']}-{job_id}"
+            filename = f"{processor.metadata['id']}-{job_id}"
             job_filename = self.output_dir / filename
         else:
             job_filename = None
 
         current_status = JobStatus.running
 
-        job_id, workspace_dir = self.submit_slurm_job(p, data_dict)
+        job_id, workspace_dir = self.submit_slurm_job(processor, data_dict)
 
         # wait for the slurm job to complete
         while True:
@@ -295,7 +288,7 @@ class SlurmManager(BaseManager):
         if exit_code != 0:
             LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
 
-        outputs = p.process_output(os.path.join(workspace_dir, 'stdout.log'))
+        outputs = processor.process_output(os.path.join(workspace_dir, 'stdout.log'))
         outputs['workspace'] = workspace_dir
 
         # TODO: copy slurm job workspace to public bucket
