@@ -277,7 +277,7 @@ class SlurmManager(BaseManager):
             if exit_code != 0:
                 LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
 
-            outputs = processor.process_output(os.path.join(workspace_dir, 'stdout.log'))
+            outputs = processor.process_output(workspace_dir)
             outputs['workspace'] = workspace_dir
 
             # TODO: copy slurm job workspace to public bucket

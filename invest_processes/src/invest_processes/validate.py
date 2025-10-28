@@ -106,10 +106,20 @@ class ValidateProcessor(BaseProcessor):
             invest validate --json {datastack_path}
             """)
 
-    def process_output(self, output_filepath):
-        with open(output_filepath) as output_file:
-            content = output_file.read()
-        print(content)
+    def process_output(self, workspace_dir):
+        """Return outputs given a workspace from completed slurm job.
+
+        Args:
+            workspace_dir (str): path to the slurm job working directory
+
+        Returns:
+            dict of validation results
+        """
+        stdout_filepath = os.path.join(workspace_dir, 'stdout.log')
+        with open(stdout_filepath) as stdout:
+            content = stdout.read()
+        LOGGER.debug('Processing stdout:\n')
+        LOGGER.debug(content)
         json_output = json.loads(content)
 
         result = {'validation_results': []}
@@ -118,7 +128,6 @@ class ValidateProcessor(BaseProcessor):
                 'input_ids': input_ids,
                 'error_message': error_message
             })
-        print(result)
         return result
 
     def execute(self, data, outputs=None):

@@ -90,7 +90,15 @@ class ExecuteProcessor(BaseProcessor):
             invest run --datastack {datastack_path} --workspace {workspace_dir} {model_id}
             """)
 
-    def process_output(self, output_filepath):
+    def process_output(self, workspace_dir):
+        """Return outputs given a workspace from completed slurm job.
+
+        Args:
+            workspace_dir (str): path to the slurm job working directory
+
+        Returns:
+            empty dict
+        """
         return {}
 
     def execute(self, data, outputs=None):
