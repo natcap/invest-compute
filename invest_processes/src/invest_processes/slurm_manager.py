@@ -320,9 +320,13 @@ class SlurmManager(BaseManager):
         Returns:
             job_id, workspace_dir
         """
-        # Create a workspace directory
+        # Create a workspace directory for the slurm job
+        # This will contain the slurm script, stdout and stderr logs,
+        # and the process being run may create additional outputs in it.
+        # This entire directory will be copied over to GCP for the user to
+        # access after the job finishes.
         workspace_root = os.path.abspath('workspaces')
-        workspace_dir = os.path.join(workspace_root, f'slurm_wksp_{time.time()}')
+        workspace_dir = tempfile.mkdtemp(dir=workspace_root, prefix=f'slurm_wksp_')
         os.makedirs(workspace_dir)
         # create the slurm script in the workspace so that the user can see it
         script_path = os.path.join(workspace_dir, 'script.slurm')
@@ -339,7 +343,7 @@ class SlurmManager(BaseManager):
             args = [
                 'sbatch', '--parsable',
                 '--chdir', workspace_dir,
-                '--output', 'stdout.log',
+                '--output', 'stdout.log',  # relative to the slurm workspace dir
                 '--error', 'stderr.log',
                 script_path]
             LOGGER.info(
