@@ -327,7 +327,7 @@ class SlurmManager(BaseManager):
         # This entire directory will be copied over to GCP for the user to
         # access after the job finishes.
         workspace_root = os.path.abspath('workspaces')
-        os.makedirs(workspace_root)
+        os.makedirs(workspace_root, exist_ok=True)
         workspace_dir = tempfile.mkdtemp(dir=workspace_root, prefix=f'slurm_wksp_')
         # create the slurm script in the workspace so that the user can see it
         script_path = os.path.join(workspace_dir, 'script.slurm')
