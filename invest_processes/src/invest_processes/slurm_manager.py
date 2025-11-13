@@ -2,11 +2,12 @@ import json
 import logging
 from multiprocessing import dummy
 import os
-from typing import Any, Dict, Optional, Tuple
-import uuid
 import subprocess
+import tempfile
 import textwrap
 import time
+from typing import Any, Dict, Optional, Tuple
+import uuid
 
 from pygeoapi.process.base import BaseProcessor
 from pygeoapi.process.manager.base import BaseManager
