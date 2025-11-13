@@ -23,10 +23,25 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+    # Below config copied from the setup-slurm-action docs:
+    # https://github.com/koesterlab/setup-slurm-action
+    #
+    # For the action to work, you have to supply a mysql
+    # service as defined below.
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - "8888:3306"
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Fetch complete history for accurate versioning
+
+      - uses: koesterlab/setup-slurm-action@v1
 
       - name: Setup conda environment
         uses: mamba-org/setup-micromamba@v2
