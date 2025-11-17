@@ -9,6 +9,7 @@ import time
 from typing import Any, Dict, Optional, Tuple
 import uuid
 
+from google.cloud import storage
 from pygeoapi.process.base import BaseProcessor
 from pygeoapi.process.manager.base import BaseManager
 from pygeoapi.util import (
@@ -20,6 +21,28 @@ from pygeoapi.util import (
 )
 
 LOGGER = logging.getLogger(__name__)
+BUCKET_NAME = 'invest-compute-workspaces'
+
+
+def upload_directory_to_bucket(dir_path, bucket_name):
+
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+
+    # get just the directory name, the last component of the path
+    dir_name = os.path.basename(os.path.normpath(dir_path))
+
+    for sub_dir, _, file_names in os.walk(dir_path):
+        for file_name in file_names:
+            # relative path starting from dir_name
+            rel_path = os.path.join(dir_name, sub_dir, file_name)
+            # absolute path including the full path to the directory
+            abs_path = os.path.join(dir_path, sub_dir, file_name)
+
+            blob = bucket.blob(rel_path)
+            blob.upload_from_filename(abs_path)
+            print(f"Uploaded {abs_path} to gs://{bucket_name}/{rel_path}")
+
 
 class SlurmManager(BaseManager):
     """Manager that uses slurm"""
@@ -281,8 +304,8 @@ class SlurmManager(BaseManager):
             outputs = processor.process_output(workspace_dir)
             outputs['workspace'] = workspace_dir
 
-            # TODO: copy slurm job workspace to public bucket
-            # LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
+            LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
+            upload_directory_to_bucket(workspace_dir, BUCKET_NAME)
 
             if requested_response == RequestedResponse.document.value:
                 outputs = {
