@@ -34,28 +34,23 @@ def upload_directory_to_bucket(dir_path, bucket_name):
     Returns:
         None
     """
-    print(dir_path)
-    print(bucket_name)
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
 
     # get the parent directory of dir_path
     parent_dir = os.path.split(os.path.normpath(dir_path))[0]
-    print(parent_dir)
 
     for sub_dir, _, file_names in os.walk(dir_path):
         for file_name in file_names:
             # absolute path including the full path to the directory
             abs_path = os.path.join(sub_dir, file_name)
-            print(abs_path)
 
             # relative path starting from the given directory
             rel_path = os.path.relpath(abs_path, start=parent_dir)
-            print(rel_path)
 
             blob = bucket.blob(rel_path)
             blob.upload_from_filename(abs_path)
-            print(f"Uploaded {abs_path} to gs://{bucket_name}/{rel_path}")
+            LOGGER.debug(f'Uploaded {abs_path} to gs://{bucket_name}/{rel_path}')
 
 
 class SlurmManager(BaseManager):
