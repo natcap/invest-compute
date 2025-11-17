@@ -285,10 +285,10 @@ class SlurmManager(BaseManager):
         try:
             job_id, workspace_dir = self.submit_slurm_job(processor, data_dict)
         except Exception as ex:
-            LOGGER.error(
+            LOGGER.error((
                 'Something went wrong while trying to submit the slurm job '.
                 'We do not have a job id or workspace yet, so there is nothing to '
-                'return to the user.')
+                'return to the user.'))
             raise ex
 
         try:
