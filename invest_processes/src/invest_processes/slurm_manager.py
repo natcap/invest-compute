@@ -283,10 +283,16 @@ class SlurmManager(BaseManager):
             extra_execute_parameters['outputs'] = requested_outputs
 
         try:
-            current_status = JobStatus.running
-
             job_id, workspace_dir = self.submit_slurm_job(processor, data_dict)
+        except Exception as ex:
+            LOGGER.error(
+                'Something went wrong while trying to submit the slurm job '.
+                'We do not have a job id or workspace yet, so there is nothing to '
+                'return to the user.')
+            raise ex
 
+        try:
+            current_status = JobStatus.running
             # wait for the slurm job to complete
             while True:
                 # check the 'state' string from the job data in sacct
@@ -312,14 +318,6 @@ class SlurmManager(BaseManager):
 
             outputs = processor.process_output(workspace_dir)
             outputs['workspace'] = workspace_dir
-
-            LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
-            upload_directory_to_bucket(workspace_dir, BUCKET_NAME)
-
-            if requested_response == RequestedResponse.document.value:
-                outputs = {
-                    'outputs': [outputs]
-                }
             current_status = JobStatus.successful
 
         except Exception as err:
@@ -337,9 +335,21 @@ class SlurmManager(BaseManager):
             outputs = {
                 'type': code,
                 'code': code,
-                'description': f'Error executing process: {err}'
+                'description': f'Error executing process: {err}',
+                'workspace': workspace_dir
             }
             LOGGER.exception(err)
+
+        finally:
+            # Upload the workspace even if something went wrong, so that the
+            # user can access the slurm related files and any partial results.
+            LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
+            upload_directory_to_bucket(workspace_dir, BUCKET_NAME)
+
+        if requested_response == RequestedResponse.document.value:
+            outputs = {
+                'outputs': [outputs]
+            }
 
         return job_id, 'application/json', outputs, current_status
 
