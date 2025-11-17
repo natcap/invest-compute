@@ -45,13 +45,13 @@ def upload_directory_to_bucket(dir_path, bucket_name):
 
     for sub_dir, _, file_names in os.walk(dir_path):
         for file_name in file_names:
-            # relative path starting from dir_name
-            print(dir_name, sub_dir, file_name)
-            rel_path = os.path.join(dir_name, sub_dir, file_name)
-            print(rel_path)
             # absolute path including the full path to the directory
-            abs_path = os.path.join(dir_path, sub_dir, file_name)
+            abs_path = os.path.join(sub_dir, file_name)
             print(abs_path)
+
+            # relative path starting from dir_name
+            rel_path = os.path.relpath(abs_path, start=dir_path)
+            print(rel_path)
 
             blob = bucket.blob(rel_path)
             blob.upload_from_filename(abs_path)
