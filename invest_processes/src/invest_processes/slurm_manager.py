@@ -39,9 +39,9 @@ def upload_directory_to_bucket(dir_path, bucket_name):
     storage_client = storage.Client()
     bucket = storage_client.bucket(bucket_name)
 
-    # get just the directory name, the last component of the path
-    dir_name = os.path.basename(os.path.normpath(dir_path))
-    print(dir_name)
+    # get the parent directory of dir_path
+    parent_dir = os.path.split(os.path.normpath(dir_path))[0]
+    print(parent_dir)
 
     for sub_dir, _, file_names in os.walk(dir_path):
         for file_name in file_names:
@@ -49,8 +49,8 @@ def upload_directory_to_bucket(dir_path, bucket_name):
             abs_path = os.path.join(sub_dir, file_name)
             print(abs_path)
 
-            # relative path starting from dir_name
-            rel_path = os.path.relpath(abs_path, start=dir_path)
+            # relative path starting from the given directory
+            rel_path = os.path.relpath(abs_path, start=parent_dir)
             print(rel_path)
 
             blob = bucket.blob(rel_path)
