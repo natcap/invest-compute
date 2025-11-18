@@ -35,7 +35,6 @@ class PyGeoAPIServerTests(unittest.TestCase):
 
     def testExecuteProcessError(self):
         """Test executing a datastack that should cause a model error."""
-        print('start test')
         response = self.client.post(f'/processes/execute/execution', json={
             'inputs': {
                 # this datastack includes an invalid raster path
@@ -50,6 +49,11 @@ class PyGeoAPIServerTests(unittest.TestCase):
             set(os.listdir(data['workspace'])),
             {'stdout.log', 'stderr.log', 'script.slurm', 'carbon_workspace'}
         )
+        # expect model error to be captured in stderr.log
+        with open(os.path.join(data['workspace'], 'stderr.log')) as err_log:
+            self.assertIn(
+                'RuntimeError: does_not_exist.tif: No such file or directory',
+                err_log.read())
 
     def testValidateProcessMetadata(self):
         response = self.client.get(f'/processes/validate')
