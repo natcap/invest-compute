@@ -36,6 +36,10 @@ jobs:
         ports:
           - "8888:3306"
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    # For gcp auth, add "id-token" with the intended permissions.
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,6 +64,11 @@ jobs:
       - name: List conda environment
         run: micromamba list
 
+      - uses: 'google-github-actions/auth@v3'
+        with:
+          service_account: 'invest-compute-wksp-uploader@natcap-servers.iam.gserviceaccount.com'
+          workload_identity_provider: 'projects/1098785064656/locations/global/workloadIdentityPools/github-actions-invest-compute/providers/invest-compute'
+
       - name: Install package
         run: cd invest_processes && pip install .
 
@@ -68,4 +77,4 @@ jobs:
           export PYGEOAPI_CONFIG=pygeoapi-config.yml
           export PYGEOAPI_OPENAPI=openapi.yml
           pygeoapi openapi generate $PYGEOAPI_CONFIG --output-file $PYGEOAPI_OPENAPI
-          pytest tests/
+          pytest --log-cli-level=DEBUG tests/

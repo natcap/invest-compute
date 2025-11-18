@@ -9,6 +9,7 @@ import time
 from typing import Any, Dict, Optional, Tuple
 import uuid
 
+from google.cloud import storage
 from pygeoapi.process.base import BaseProcessor
 from pygeoapi.process.manager.base import BaseManager
 from pygeoapi.util import (
@@ -20,6 +21,37 @@ from pygeoapi.util import (
 )
 
 LOGGER = logging.getLogger(__name__)
+BUCKET_NAME = 'invest-compute-workspaces'
+
+
+def upload_directory_to_bucket(dir_path, bucket_name):
+    """Upload everything in a given directory to a GCP bucket.
+
+    Args:
+        dir_path (str): path to the directory to be uploaded
+        bucket_name (str): GCP bucket name
+
+    Returns:
+        None
+    """
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+
+    # get the parent directory of dir_path
+    parent_dir = os.path.split(os.path.normpath(dir_path))[0]
+
+    for sub_dir, _, file_names in os.walk(dir_path):
+        for file_name in file_names:
+            # absolute path including the full path to the directory
+            abs_path = os.path.join(sub_dir, file_name)
+
+            # relative path starting from the given directory
+            rel_path = os.path.relpath(abs_path, start=parent_dir)
+
+            blob = bucket.blob(rel_path)
+            blob.upload_from_filename(abs_path)
+            LOGGER.debug(f'Uploaded {abs_path} to gs://{bucket_name}/{rel_path}')
+
 
 class SlurmManager(BaseManager):
     """Manager that uses slurm"""
@@ -242,7 +274,6 @@ class SlurmManager(BaseManager):
 
         :returns: tuple of MIME type, response payload and status
         """
-
         extra_execute_parameters = {}
 
         # only pass requested_outputs if supported,
@@ -251,10 +282,16 @@ class SlurmManager(BaseManager):
             extra_execute_parameters['outputs'] = requested_outputs
 
         try:
-            current_status = JobStatus.running
-
             job_id, workspace_dir = self.submit_slurm_job(processor, data_dict)
+        except Exception as ex:
+            LOGGER.error(
+                'Something went wrong while trying to submit the slurm job. '
+                'We do not have a job id or workspace yet, so there is nothing to '
+                'return to the user.')
+            raise ex
 
+        try:
+            current_status = JobStatus.running
             # wait for the slurm job to complete
             while True:
                 # check the 'state' string from the job data in sacct
@@ -265,7 +302,8 @@ class SlurmManager(BaseManager):
                 ], capture_output=True, text=True, check=True).stdout.strip()
                 LOGGER.debug(f'Status of slurm job {job_id}: {status}')
 
-                if status == 'COMPLETED':
+                # TODO: make this more resilient to other possible job states
+                if status == 'COMPLETED' or status == 'FAILED':
                     break
                 time.sleep(1)
 
@@ -280,14 +318,6 @@ class SlurmManager(BaseManager):
 
             outputs = processor.process_output(workspace_dir)
             outputs['workspace'] = workspace_dir
-
-            # TODO: copy slurm job workspace to public bucket
-            # LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
-
-            if requested_response == RequestedResponse.document.value:
-                outputs = {
-                    'outputs': [outputs]
-                }
             current_status = JobStatus.successful
 
         except Exception as err:
@@ -299,15 +329,26 @@ class SlurmManager(BaseManager):
             # endpoint, even if the /result endpoint correctly returns the
             # failure information (i.e. what one might assume is a 200
             # response).
-
             current_status = JobStatus.failed
             code = 'InvalidParameterValue'
             outputs = {
                 'type': code,
                 'code': code,
-                'description': f'Error executing process: {err}'
+                'description': f'Error executing process: {err}',
+                'workspace': workspace_dir
             }
             LOGGER.exception(err)
+
+        finally:
+            # Upload the workspace even if something went wrong, so that the
+            # user can access the slurm related files and any partial results.
+            LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
+            upload_directory_to_bucket(workspace_dir, BUCKET_NAME)
+
+        if requested_response == RequestedResponse.document.value:
+            outputs = {
+                'outputs': [outputs]
+            }
 
         return job_id, 'application/json', outputs, current_status
 
