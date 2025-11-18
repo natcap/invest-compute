@@ -311,6 +311,7 @@ class SlurmManager(BaseManager):
             exit_code = int(subprocess.run([
                 'sacct', '--noheader', '-X', '-j', job_id, '-o', 'ExitCode'
             ], capture_output=True, text=True, check=True).stdout.strip().split(':')[0])
+            print(exit_code)
             LOGGER.debug(f'Exit code of slurm job {job_id}: {exit_code}')
 
             if exit_code != 0:
@@ -329,6 +330,8 @@ class SlurmManager(BaseManager):
             # endpoint, even if the /result endpoint correctly returns the
             # failure information (i.e. what one might assume is a 200
             # response).
+            #
+            print('exception', err)
 
             current_status = JobStatus.failed
             code = 'InvalidParameterValue'
@@ -341,6 +344,7 @@ class SlurmManager(BaseManager):
             LOGGER.exception(err)
 
         finally:
+            print('upload')
             # Upload the workspace even if something went wrong, so that the
             # user can access the slurm related files and any partial results.
             LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
