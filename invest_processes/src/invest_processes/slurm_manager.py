@@ -306,7 +306,7 @@ class SlurmManager(BaseManager):
 
                 print('status:', status)
 
-                if status == 'COMPLETED':
+                if status == 'COMPLETED' or status == 'FAILED':
                     break
                 time.sleep(1)
 
