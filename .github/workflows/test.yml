@@ -77,4 +77,4 @@ jobs:
           export PYGEOAPI_CONFIG=pygeoapi-config.yml
           export PYGEOAPI_OPENAPI=openapi.yml
           pygeoapi openapi generate $PYGEOAPI_CONFIG --output-file $PYGEOAPI_OPENAPI
-          pytest -s -k Error tests/
+          pytest --log-cli-level=DEBUG tests/
