@@ -274,7 +274,7 @@ class SlurmManager(BaseManager):
 
         :returns: tuple of MIME type, response payload and status
         """
-
+        print('execute handler sync')
         extra_execute_parameters = {}
 
         # only pass requested_outputs if supported,
@@ -284,6 +284,7 @@ class SlurmManager(BaseManager):
 
         try:
             job_id, workspace_dir = self.submit_slurm_job(processor, data_dict)
+            print(job_id, workspace_dir)
         except Exception as ex:
             LOGGER.error(
                 'Something went wrong while trying to submit the slurm job. '
@@ -302,6 +303,8 @@ class SlurmManager(BaseManager):
                     '-o', 'State'
                 ], capture_output=True, text=True, check=True).stdout.strip()
                 LOGGER.debug(f'Status of slurm job {job_id}: {status}')
+
+                print('status:', status)
 
                 if status == 'COMPLETED':
                     break
@@ -367,6 +370,7 @@ class SlurmManager(BaseManager):
         Returns:
             job_id, workspace_dir
         """
+        print('submit slurm job')
         # Create a workspace directory for the slurm job
         # This will contain the slurm script, stdout and stderr logs,
         # and the process being run may create additional outputs in it.
@@ -387,6 +391,7 @@ class SlurmManager(BaseManager):
 
         # Submit the job
         try:
+            print('submit job')
             args = [
                 'sbatch', '--parsable',
                 '--chdir', workspace_dir,
@@ -400,6 +405,7 @@ class SlurmManager(BaseManager):
             LOGGER.info(f'stdout from sbatch: {result.stdout}')
 
         except subprocess.CalledProcessError as e:
+            print(e)
             raise RuntimeError('Error when submitting slurm job') from e
 
         job_id = result.stdout.strip()

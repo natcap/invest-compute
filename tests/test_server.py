@@ -35,6 +35,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
 
     def testExecuteProcessError(self):
         """Test executing a datastack that should cause a model error."""
+        print('start test')
         response = self.client.post(f'/processes/execute/execution', json={
             'inputs': {
                 # this datastack includes an invalid raster path
