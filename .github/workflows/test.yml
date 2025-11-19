@@ -109,5 +109,5 @@ jobs:
       - name: Create deployment folder
         # this does not actually deploy anything
         run: |
-          ./cluster-toolkit/gcluster create slurm_cluster_config/hpc-slurm.yaml \
+          ./cluster-toolkit/gcluster create slurm_cluster_config/hpc-slurm.yml \
             -l ERROR --vars project_id=natcap-servers
