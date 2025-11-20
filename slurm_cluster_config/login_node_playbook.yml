@@ -1,0 +1,41 @@
+---
+- name: Install and run invest-compute server on the login node
+  hosts: all
+  become: yes # Run tasks with elevated privileges
+
+  vars:
+    env_name: env # Name of the micromamba environment
+
+  tasks:
+    - name: Install Micromamba and create environment
+      ansible.builtin.include_role:
+        name: mambaorg.micromamba
+      vars:
+        packages:
+          - python
+        environment_name: "{{ micromamba_env_name }}"
+
+    - name: install invest-compute
+      ansible.builtin.shell: |
+
+        # Initialize micromamba shell hook for the current session
+        eval "$({{ micromamba_root_prefix }}/bin/micromamba shell hook -s posix)"
+        # Activate the environment
+        micromamba activate {{ micromamba_env_name }}
+
+        git clone https://github.com/natcap/invest-compute.git
+        cd invest-compute/invest_processes
+        pip install .
+
+        export PYGEOAPI_CONFIG=pygeoapi-config.yml
+        export PYGEOAPI_OPENAPI=openapi.yml
+        pygeoapi openapi generate $PYGEOAPI_CONFIG --output-file $PYGEOAPI_OPENAPI
+        pygeoapi serve
+
+      args:
+        executable: /bin/bash # Ensure bash is used for shell hooks
+      register: python_output
+
+    - name: Display Python output
+      ansible.builtin.debug:
+        var: python_output.stdout
