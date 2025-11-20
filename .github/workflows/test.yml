@@ -111,7 +111,7 @@ jobs:
           ./gcluster --version
 
       - name: authenticate
-        run: gcloud auth application-default login
+        run: gcloud auth application-default login --quiet
 
       - name: Create deployment folder
         # this does not actually deploy anything
