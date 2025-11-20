@@ -1,0 +1,7 @@
+plugin: google.cloud.gcp_compute
+projects:
+  - natcap-servers
+auth_kind: serviceaccount
+service_account_file: /Users/emily/Downloads/natcap-servers-02db9583ee4e.json
+filters:
+  - name = "hpcslurm-slurm-login-001"
