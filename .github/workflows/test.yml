@@ -96,8 +96,12 @@ jobs:
 
       - uses: 'google-github-actions/auth@v3'
         with:
+          project_id: 'natcap-servers'
           service_account: 'invest-compute-cluster-admin@natcap-servers.iam.gserviceaccount.com'
           workload_identity_provider: 'projects/1098785064656/locations/global/workloadIdentityPools/github-actions-invest-compute/providers/invest-compute'
+
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
 
       - name: Build and install Google Cluster Toolkit
         run: |
