@@ -33,7 +33,7 @@ gcloud compute ssh hpcslurm-slurm-login-001 --tunnel-through-iap
 ```
 In order to run Ansible, you'll need to configure regular SSH to the instance (without `gcloud` or IAP tunneling). `gcloud compute config-ssh` is some help with this, but for me there was some trial and error. Make sure that you can connect to the login node like so:
 ```
-ssh <username>@<external ip address>
+ssh -i ~/.ssh/google_compute_engine <username>@<external ip address>
 ```
 Your username on the instance can be found by separately SSHing into it (easily done with the SSH button in the GCP console). The external IP address can also be found in the GCP console.
 
