@@ -41,7 +41,7 @@ So that we do not have to list out the IP addresses of each target node, we are 
 
 Run the playbook:
 ```
-ansible-playbook -i gcp.yml login_node_playbook.yml
+ansible-playbook -vvv -i gcp.yml login_node_playbook.yml
 ```
 At this point, the nodes should be configured and the pygeoapi server should be running on the login node.
 
