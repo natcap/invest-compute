@@ -17,7 +17,7 @@
 blueprint_name: hpc-slurm
 
 vars:
-  project_id:  ## Set GCP Project ID Here ##
+  project_id: natcap-servers
   deployment_name: hpc-slurm
   region: us-central1
   zone: us-central1-a
@@ -32,6 +32,14 @@ deployment_groups:
   # as a prefix. To refer to a local module, prefix with ./, ../ or /
   - id: network
     source: modules/network/vpc
+    settings:
+      firewall_rules:
+      - name: ssh-my-machine
+        direction: INGRESS
+        ranges: [0.0.0.0/0]
+        allow:
+        - protocol: tcp
+          ports: [22]
 
   # Private Service Access (PSA) requires the compute.networkAdmin role which is
   # included in the Owner role, but not Editor.
@@ -107,6 +115,15 @@ deployment_groups:
     settings:
       machine_type: n2-standard-4
       enable_login_public_ips: true
+      # Cloud-init YAML (must be supported by the image)
+      metadata:
+        user_data: |
+          <<-EOF
+          #!/bin/bash
+          sudo dnf update -y
+          sudo dnf install python3.12 -y
+          python3.12 --version
+          EOF
 
   - id: slurm_controller
     source: community/modules/scheduler/schedmd-slurm-gcp-v6-controller
