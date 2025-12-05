@@ -115,15 +115,6 @@ deployment_groups:
     settings:
       machine_type: n2-standard-4
       enable_login_public_ips: true
-      # Cloud-init YAML (must be supported by the image)
-      metadata:
-        user_data: |
-          <<-EOF
-          #!/bin/bash
-          sudo dnf update -y
-          sudo dnf install python3.12 -y
-          python3.12 --version
-          EOF
 
   - id: slurm_controller
     source: community/modules/scheduler/schedmd-slurm-gcp-v6-controller
