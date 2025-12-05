@@ -1,0 +1,51 @@
+---
+- name: Install and run invest-compute server on the login node
+  hosts: all
+  # become: yes # Run tasks with elevated privileges
+
+  vars:
+    env_name: env # Name of the micromamba environment
+
+    # "python" is not available by default
+    # specify a version compatible with ansible
+    ansible_python_interpreter: python3.12
+
+    # if configured with `gcloud compute config-ssh`,
+    # the necessary private key should be here
+    # this is used as the -i argument to ssh
+    ansible_ssh_private_key_file: ~/.ssh/google_compute_engine
+
+    # TODO: how to make this not specific to me
+    ansible_user: esoth_stanford_edu
+
+  tasks:
+    - name: Install and launch server
+      args:
+        executable: /bin/bash # Ensure bash is used for shell hooks
+      ansible.builtin.shell: |
+
+        # install micromamba
+        curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
+        eval "$(./bin/micromamba shell hook -s posix)"
+        micromamba --version
+
+        # create and activate the environment
+        micromamba create -y -n env python=3.13 gdal natcap.invest==3.17.2
+        micromamba activate env
+        pip install pygeoapi
+        pygeoapi --version
+
+        # install invest extensions to pygeoapi
+        rm -rf invest-compute
+        git clone https://github.com/natcap/invest-compute.git
+        cd invest-compute/invest_processes
+        pip install .
+
+        # configure pygeoapi
+        cd ..
+        export PYGEOAPI_CONFIG=pygeoapi-config.yml
+        export PYGEOAPI_OPENAPI=openapi.yml
+        pygeoapi openapi generate $PYGEOAPI_CONFIG --output-file $PYGEOAPI_OPENAPI
+
+        # launch the pygeoapi server as a background process not tied to this shell
+        nohup pygeoapi serve > pygeoapi_serve.log &
