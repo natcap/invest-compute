@@ -19,12 +19,18 @@
     ansible_user: esoth_stanford_edu
 
   tasks:
+    - name: Copy the local codebase directory to the remote server
+      ansible.builtin.copy:
+        src: ../invest_processes/
+        dest: ~/invest_processes
+
     - name: Install and launch server
       args:
         executable: /bin/bash # Ensure bash is used for shell hooks
       ansible.builtin.shell: |
 
         # install micromamba
+        rm -f bin/micromamba
         curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
         eval "$(./bin/micromamba shell hook -s posix)"
         micromamba --version
@@ -36,13 +42,15 @@
         pygeoapi --version
 
         # install invest extensions to pygeoapi
-        rm -rf invest-compute
-        git clone https://github.com/natcap/invest-compute.git
+        # rm -rf invest-compute
+        # git clone https://github.com/natcap/invest-compute.git
+        pwd
         cd invest-compute/invest_processes
         pip install .
 
         # configure pygeoapi
-        cd ..
+        pwd
+        ls
         export PYGEOAPI_CONFIG=pygeoapi-config.yml
         export PYGEOAPI_OPENAPI=openapi.yml
         pygeoapi openapi generate $PYGEOAPI_CONFIG --output-file $PYGEOAPI_OPENAPI

@@ -80,16 +80,27 @@ class ValidateProcessor(BaseProcessor):
 
         super().__init__(processor_def, PROCESS_METADATA)
 
-    def create_slurm_script(self, datastack_path, workspace_dir):
+    def create_slurm_script(self, datastack_url, workspace_dir):
         """Create a script to run with sbatch.
 
         Args:
-            datastack_path: path to the user provided invest datastack to execute
+            datastack_url: url to the user provided invest datastack to execute
             workspace_dir: path to the directory that the slurm job will run in
 
         Returns:
             string contents of the script
         """
+        # Download the datastack from the given URL and save to a local file
+        response = requests.get(datastack_url)
+        datastack_path = os.path.join(workspace_dir, 'datastack.json')
+        if response.status_code == 200:
+            with open(datastack_path, 'w') as datastack_file:
+                datastack_file.write(response.content)
+        else:
+            raise ProcessorExecuteError(
+                "Failed to download datastack file. Request returned " +
+                {response.status_code})
+
         try:
             model_id = datastack.extract_parameter_set(datastack_path).model_id
         except Exception as error:

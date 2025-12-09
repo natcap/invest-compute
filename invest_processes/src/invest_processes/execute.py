@@ -1,6 +1,7 @@
 import importlib
 import logging
 import os
+import tarfile
 import tempfile
 import textwrap
 import time
@@ -65,21 +66,43 @@ class ExecuteProcessor(BaseProcessor):
 
         super().__init__(processor_def, PROCESS_METADATA)
 
-    def create_slurm_script(self, datastack_path, workspace_dir):
+    def create_slurm_script(self, datastack_url, workspace_dir):
         """Create a script to run with sbatch.
 
         Args:
-            datastack_path: path to the user provided invest datastack to execute
+            datastack_url: URL to the invest datastack (.tgz) to execute
             workspace_dir: path to the directory that the slurm job will run in
 
         Returns:
             string contents of the script
         """
+        # Download the datastack from the given URL and save to a local file
+        response = requests.get(datastack_url)
+        tgz_path = os.path.join(workspace_dir, 'datastack.tgz')
+        if response.status_code == 200:
+            with open(tgz_path, 'w') as tgz:
+                tgz.write(response.content)
+        else:
+            raise ProcessorExecuteError(
+                "Failed to download datastack file. Request returned " +
+                {response.status_code})
+
+        # Extract the TGZ archive to a local directory
+        extracted_datastack_dir = os.path.join(workspace_dir, 'datastack')
         try:
-            model_id = datastack.extract_parameter_set(datastack_path).model_id
+            with tarfile.open(tgz_path, 'r:gz') as tgz:
+                tgz.extractall(path=extracted_datastack_dir)
+        except Exception as err:
+            raise ProcessorExecuteError(
+                1, f'Failed to extract datastack archive:\n{str(err)}')
+
+        # Parse the extracted datastack JSON
+        json_path = os.path.join(extracted_datastack_dir, 'parameters.invest.json')
+        try:
+            model_id = datastack.extract_parameter_set(json_path).model_id
         except Exception as error:
             raise ProcessorExecuteError(
-                1, "Error when parsing JSON datastack:\n    " + str(error))
+                1, f'Error when parsing JSON datastack:\n{str(error)}')
 
         # Create a workspace directory
         workspace_dir = os.path.join(workspace_dir, f'{model_id}_workspace')
@@ -87,7 +110,7 @@ class ExecuteProcessor(BaseProcessor):
         return textwrap.dedent(f"""\
             #!/bin/sh
             #SBATCH --time=10
-            invest run --datastack {datastack_path} --workspace {workspace_dir} {model_id}
+            invest run --datastack {json_path} --workspace {workspace_dir} {model_id}
             """)
 
     def process_output(self, workspace_dir):
