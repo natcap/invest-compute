@@ -8,6 +8,7 @@ import time
 
 from natcap.invest import datastack, models, spec, utils
 from pygeoapi.process.base import BaseProcessor, ProcessorExecuteError
+import requests
 
 LOGGER = logging.getLogger(__name__)
 
@@ -80,7 +81,7 @@ class ExecuteProcessor(BaseProcessor):
         response = requests.get(datastack_url)
         tgz_path = os.path.join(workspace_dir, 'datastack.tgz')
         if response.status_code == 200:
-            with open(tgz_path, 'w') as tgz:
+            with open(tgz_path, 'wb') as tgz:
                 tgz.write(response.content)
         else:
             raise ProcessorExecuteError(

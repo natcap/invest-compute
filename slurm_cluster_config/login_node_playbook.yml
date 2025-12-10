@@ -19,10 +19,18 @@
     ansible_user: esoth_stanford_edu
 
   tasks:
-    - name: Copy the local codebase directory to the remote server
-      ansible.builtin.copy:
-        src: ../invest_processes/
-        dest: ~/invest_processes
+    - name: Install rsync
+      become: true
+      ansible.builtin.shell: |
+        rsync --version
+        dnf install -y rsync
+
+    - name: Synchronize the local repository
+      ansible.posix.synchronize:
+        src: ~/invest-compute
+        dest: "~"
+        mode: push
+        delete: yes
 
     - name: Install and launch server
       args:
@@ -42,15 +50,10 @@
         pygeoapi --version
 
         # install invest extensions to pygeoapi
-        # rm -rf invest-compute
-        # git clone https://github.com/natcap/invest-compute.git
-        pwd
         cd invest-compute/invest_processes
         pip install .
 
         # configure pygeoapi
-        pwd
-        ls
         export PYGEOAPI_CONFIG=pygeoapi-config.yml
         export PYGEOAPI_OPENAPI=openapi.yml
         pygeoapi openapi generate $PYGEOAPI_CONFIG --output-file $PYGEOAPI_OPENAPI
