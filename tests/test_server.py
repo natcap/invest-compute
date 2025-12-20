@@ -32,7 +32,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
             set(os.listdir(data['workspace'])),
             {'stdout.log', 'stderr.log', 'script.slurm', 'carbon_workspace'}
         )
-        # curl -X POST -H "Content-Type: application/json" -d '{"inputs": {"datastack_path": "tests/test_data/carbon_willamette.invs.json"}}' localhost:5000/processes/execute/execution
+        # curl -X POST -H "Content-Type: application/json" -d '{"inputs": {"datastack_url": "https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_datastack.tgz"}}' localhost:5000/processes/execute/execution
 
     def testExecuteProcessError(self):
         """Test executing a datastack that should cause a model error."""

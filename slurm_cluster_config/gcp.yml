@@ -1,8 +1,9 @@
 plugin: google.cloud.gcp_compute
 projects:
-  - natcap-servers
+  - sdss-sdss-invest-compute
 auth_kind: serviceaccount
 # TODO: make this generic
-service_account_file: /Users/emily/Downloads/natcap-servers-02db9583ee4e.json
+# create this service account in terraform
+service_account_file: /Users/emily/Downloads/sdss-sdss-invest-compute-5c0f916cfdde.json
 filters:
   - name = "hpcslurm-slurm-login-001"
