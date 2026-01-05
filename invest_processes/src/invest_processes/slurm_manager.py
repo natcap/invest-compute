@@ -109,7 +109,7 @@ class SlurmManager(BaseManager):
 
     def get_job(self, job_id: str) -> dict:
         """
-        Get a job
+        Get a job status. Called by the /jobs/<job_id> endpoint.
 
         :param job_id: job identifier
 
@@ -117,7 +117,34 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        raise NotImplementedError()
+        status = subprocess.run([
+            'sacct', '--noheader', '-X',
+            '-j', job_id,
+            '-o', 'State'
+        ], capture_output=True, text=True, check=True).stdout.strip()
+        LOGGER.debug(f'Status of slurm job {job_id}: {status}')
+
+        # Map slurm job statuses to OGC Process job statuses
+        # According to the Processes standard, job statuses may be
+        # 'accepted', 'running', 'successful', 'failed', or 'dismissed'.
+        # Slurm statuses are as defined here: https://slurm.schedmd.com/job_state_codes.html
+        status_map = {
+            'BOOT_FAIL': JobStatus.failed,      # terminated due to node boot failure
+            'CANCELLED': JobStatus.dismissed,   # cancelled by user or administrator
+            'COMPLETED': JobStatus.successful,  # completed execution successfully; finished with an exit code of zero on all nodes
+            'DEADLINE': JobStatus.failed,       # terminated due to reaching the latest start time that allows the job to reach its deadline given its TimeLimit
+            'FAILED': JobStatus.failed,         # completed execution unsuccessfully; non-zero exit code or other failure condition
+            'NODE_FAIL': JobStatus.failed,      # terminated due to node failure
+            'OUT_OF_MEMORY': JobStatus.failed,  # experienced out of memory error
+            'PENDING': JobStatus.accepted,      # queued and waiting for initiation; will typically have a reason code specifying why it has not yet started
+            'PREEMPTED': JobStatus.dismissed,   # terminated due to preemption; may transition to another state based on the configured PreemptMode and job characteristics
+            'RUNNING': JobStatus.running,       # allocated resources and executing
+            'SUSPENDED': JobStatus.dismissed,   # allocated resources but execution suspended, such as from preemption or a direct request from an authorized user
+            'TIMEOUT': JobStatus.failed         # terminated due to reaching the time limit, such as those configured in slurm.conf or specified for the individual job
+        }
+
+        return status_map[status]
+
 
     def get_job_result(self, job_id: str) -> Tuple[str, Any]:
         """
@@ -132,6 +159,7 @@ class SlurmManager(BaseManager):
         :returns: `tuple` of mimetype and raw output
         """
         raise NotImplementedError()
+
 
     def delete_job(self, job_id: str) -> bool:
         """
@@ -217,42 +245,9 @@ class SlurmManager(BaseManager):
 
         return job_id, mime_type, outputs, status, response_headers
 
-    def _execute_handler_async(self, processor, data_dict, requested_outputs=None,
-                               subscriber=None, requested_response=RequestedResponse.raw.value):
-        """
-        This private execution handler executes a process in a background
-        thread using `multiprocessing.dummy`
-
-        https://docs.python.org/3/library/multiprocessing.html#module-multiprocessing.dummy  # noqa
-
-        :param processor: `pygeoapi.process` object
-        :param job_id: job identifier
-        :param data_dict: `dict` of data parameters
-        :param requested_outputs: `dict` optionally specifying the subset of
-                                  required outputs - defaults to all outputs.
-                                  The value of any key may be an object and
-                                  include the property `transmissionMode`
-                                  (defaults to `value`)
-                                  Note: 'optional' is for backward
-                                  compatibility.
-        :param subscriber: optional `Subscriber` specifying callback URLs
-        :param requested_response: `RequestedResponse` optionally specifying
-                                   raw or document (default is `raw`)
-
-        :returns: tuple of None (i.e. initial response payload)
-                  and JobStatus.accepted (i.e. initial job status)
-        """
-
-        args = (processor, data_dict, requested_outputs, subscriber,
-                requested_response)
-
-        _process = dummy.Process(target=self._execute_handler_sync, args=args)
-        _process.start()
-
-        return 'application/json', None, JobStatus.accepted
 
     def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
-                              requested_response=RequestedResponse.raw.value):
+                               subscriber=None, requested_response=RequestedResponse.raw.value):
         """
         Synchronous execution handler
 
@@ -274,32 +269,17 @@ class SlurmManager(BaseManager):
 
         :returns: tuple of MIME type, response payload and status
         """
-        extra_execute_parameters = {}
+        job_id, mimetype, outputs, status = self._execute_handler_async(
+            processor, data_dict, requested_outputs, subscriber, requested_response)
 
-        # only pass requested_outputs if supported,
-        # otherwise this breaks existing processes
-        if processor.supports_outputs:
-            extra_execute_parameters['outputs'] = requested_outputs
-
-        try:
-            job_id, workspace_dir = self.submit_slurm_job(processor, data_dict)
-        except Exception as ex:
-            LOGGER.error(
-                'Something went wrong while trying to submit the slurm job. '
-                'We do not have a job id or workspace yet, so there is nothing to '
-                'return to the user.')
-            raise ex
+        # _process = dummy.Process(target=self._execute_handler_sync, args=args)
+        # _process.start()
 
         try:
-            current_status = JobStatus.running
             # wait for the slurm job to complete
             while True:
                 # check the 'state' string from the job data in sacct
-                status = subprocess.run([
-                    'sacct', '--noheader', '-X',
-                    '-j', job_id,
-                    '-o', 'State'
-                ], capture_output=True, text=True, check=True).stdout.strip()
+                status = self.get_job(job_id)
                 LOGGER.debug(f'Status of slurm job {job_id}: {status}')
 
                 # TODO: make this more resilient to other possible job states
@@ -318,7 +298,6 @@ class SlurmManager(BaseManager):
 
             outputs = processor.process_output(workspace_dir)
             outputs['workspace'] = workspace_dir
-            current_status = JobStatus.successful
 
         except Exception as err:
             # TODO assess correct exception type and description to help users
@@ -345,12 +324,55 @@ class SlurmManager(BaseManager):
             LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
             upload_directory_to_bucket(workspace_dir, BUCKET_NAME)
 
+
+        return 'application/json', None, JobStatus.accepted
+
+
+    def _execute_handler_async(self, processor, data_dict, requested_outputs=None,
+                              requested_response=RequestedResponse.raw.value):
+        """
+        Asynchronous execution handler
+
+        :param processor: `pygeoapi.process` object
+        :param job_id: job identifier
+        :param data_dict: `dict` of data parameters
+        :param requested_outputs: `dict` optionally specifying the subset of
+                                  required outputs - defaults to all outputs.
+                                  The value of any key may be an object and
+                                  include the property `transmissionMode`
+                                  (defaults to `value`)
+                                  Note: 'optional' is for backward
+                                  compatibility.
+        :param subscriber: optional `Subscriber` specifying callback URLs
+        :param requested_response: `RequestedResponse` optionally specifying
+                                   raw or document (default is `raw`)
+
+        :returns: tuple of None (i.e. initial response payload)
+                  and JobStatus.accepted (i.e. initial job status)
+        """
+        try:
+            job_id, workspace_dir = self.submit_slurm_job(processor, data_dict)
+        except Exception as ex:
+            LOGGER.error(
+                'Something went wrong while trying to submit the slurm job. '
+                'We do not have a job id or workspace yet, so there is nothing to '
+                'return to the user.')
+            raise ex
+
+        job_status = self.get_job(job_id)
+        outputs = {
+            'job_id': job_id,
+            'status': job_status,
+            'type': 'process'
+        }
+
         if requested_response == RequestedResponse.document.value:
             outputs = {
                 'outputs': [outputs]
             }
 
-        return job_id, 'application/json', outputs, current_status
+        return job_id, 'application/json', outputs, job_status
+
 
     def submit_slurm_job(self, processor, data_dict):
         """Submit a slurm job to execute the process.
