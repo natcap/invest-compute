@@ -350,7 +350,7 @@ class SlurmManager(BaseManager):
         final_status = self.get_job(job_id)
         outputs = {
             'job_id': job_id,
-            'status': final_status,
+            'status': final_status.value,
             'type': 'process'
         }
         if requested_response == RequestedResponse.document.value:
@@ -399,7 +399,7 @@ class SlurmManager(BaseManager):
 
         outputs = {
             'job_id': job_id,
-            'status': JobStatus.accepted,
+            'status': JobStatus.accepted.value,
             'type': 'process'
         }
         if requested_response == RequestedResponse.document.value:
