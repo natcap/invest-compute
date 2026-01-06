@@ -213,6 +213,7 @@ class SlurmManager(BaseManager):
                 ProcessExecutionMode.async_execute.value in job_control_options
                 )
             if self.is_async and process_supports_async:
+                print('async')
                 LOGGER.debug('Asynchronous execution')
                 handler = self._execute_handler_async
                 response_headers = {
@@ -220,6 +221,7 @@ class SlurmManager(BaseManager):
                         RequestedProcessExecutionMode.respond_async.value)
                 }
             else:
+                print('sync')
                 LOGGER.debug('Synchronous execution')
                 handler = self._execute_handler_sync
                 response_headers = {
@@ -228,12 +230,14 @@ class SlurmManager(BaseManager):
                 }
         elif execution_mode == RequestedProcessExecutionMode.wait:
             # client wants sync - pygeoapi implicitly supports sync mode
+            print('sync')
             LOGGER.debug('Synchronous execution')
             handler = self._execute_handler_sync
             response_headers = {
                 'Preference-Applied': RequestedProcessExecutionMode.wait.value}
         else:  # client has no preference
             # according to OAPI - Processes spec we ought to respond with sync
+            print('sync')
             LOGGER.debug('Synchronous execution')
             handler = self._execute_handler_sync
             response_headers = None
