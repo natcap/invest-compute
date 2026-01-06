@@ -367,7 +367,7 @@ class SlurmManager(BaseManager):
                 'outputs': [outputs]
             }
 
-        return job_id, 'application/json', outputs, job_status
+        return job_id, 'application/json', outputs, JobStatus.accepted
 
 
     def submit_slurm_job(self, processor, data_dict):

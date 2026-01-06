@@ -93,20 +93,31 @@ class ValidateProcessor(BaseProcessor):
         """
         # Download the datastack from the given URL and save to a local file
         response = requests.get(datastack_url)
-        datastack_path = os.path.join(workspace_dir, 'datastack.json')
+        tgz_path = os.path.join(workspace_dir, 'datastack.tgz')
         if response.status_code == 200:
-            with open(datastack_path, 'w') as datastack_file:
-                datastack_file.write(response.content)
+            with open(tgz_path, 'wb') as tgz:
+                tgz.write(response.content)
         else:
             raise ProcessorExecuteError(
                 "Failed to download datastack file. Request returned " +
                 {response.status_code})
 
+        # Extract the TGZ archive to a local directory
+        extracted_datastack_dir = os.path.join(workspace_dir, 'datastack')
         try:
-            model_id = datastack.extract_parameter_set(datastack_path).model_id
+            with tarfile.open(tgz_path, 'r:gz') as tgz:
+                tgz.extractall(path=extracted_datastack_dir)
+        except Exception as err:
+            raise ProcessorExecuteError(
+                1, f'Failed to extract datastack archive:\n{str(err)}')
+
+        # Parse the extracted datastack JSON
+        json_path = os.path.join(extracted_datastack_dir, 'parameters.invest.json')
+        try:
+            model_id = datastack.extract_parameter_set(json_path).model_id
         except Exception as error:
             raise ProcessorExecuteError(
-                1, "Error when parsing JSON datastack:\n    " + str(error))
+                1, f'Error when parsing JSON datastack:\n{str(error)}')
 
         # Create a workspace directory
         workspace_root = os.path.abspath('workspaces')
@@ -115,7 +126,7 @@ class ValidateProcessor(BaseProcessor):
         return textwrap.dedent(f"""\
             #!/bin/sh
             #SBATCH --time=10
-            invest validate --json {datastack_path}
+            invest validate --json {json_path}
             """)
 
     def process_output(self, workspace_dir):

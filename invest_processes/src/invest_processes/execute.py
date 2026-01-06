@@ -114,6 +114,11 @@ class ExecuteProcessor(BaseProcessor):
             invest run --datastack {json_path} --workspace {workspace_dir} {model_id}
             """)
 
+
+#
+# $800 every 6 years plus $800 every 6 years = $266/yr
+# $800 every 4 years = $200/yr
+#
     def process_output(self, workspace_dir):
         """Return outputs given a workspace from completed slurm job.
 
