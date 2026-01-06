@@ -19,7 +19,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
     #     self.assertEqual(response.status_code, 200)
 
     def testExecuteProcessExecutionSync(self):
-        response = self.client.post(f'/processes/execute/execution', json={
+        response = self.client.post('/processes/execute/execution', json={
             'inputs': {
                 'datastack_url': self.datastack_url
             }
@@ -28,7 +28,14 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.get_data(as_text=True))
         self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
+        self.assertEqual(data['type'], 'process')  # according to the OGC standard this should always be 'process'
         self.assertEqual(data['status'], 'successful')
+        self.assertEqual(response.headers['Location'], f'http://localhost:5000/jobs/{job_id}')
+
+        response = self.client.get(f'/jobs/{job_id}')
+        print(response.headers)
+        print(json.loads(response.get_data(as_text=True)))
+
         # self.assertEqual(
         #     set(os.listdir(data['workspace'])),
         #     {'stdout.log', 'stderr.log', 'script.slurm', 'carbon_workspace'}
