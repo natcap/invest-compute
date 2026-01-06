@@ -38,8 +38,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         response = self.client.post(f'/processes/execute/execution', json={
             'inputs': {
                 # this datastack includes an invalid raster path
-                'datastack_url': os.path.abspath(os.path.join(
-                    os.path.dirname(__file__), 'test_data/carbon_error.invs.json'))
+                'datastack_url': 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_error_datastack.tgz'
             }
         })
         self.assertEqual(response.status_code, 200)
