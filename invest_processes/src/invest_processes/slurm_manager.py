@@ -244,7 +244,7 @@ class SlurmManager(BaseManager):
             requested_outputs,
             requested_response=requested_response)
 
-        return job_id, mime_type, outputs, status, response_headers
+        return job_id, mime_type, outputs, status.value, response_headers
 
 
     def monitor_job_status(self, job_id, workspace_dir):
