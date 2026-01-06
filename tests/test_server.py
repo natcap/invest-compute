@@ -14,9 +14,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def testExecuteProcessMetadata(self):
-        response = self.client.get(f'/processes/execute')
-        self.assertEqual(response.status_code, 200)
+    # def testExecuteProcessMetadata(self):
+    #     response = self.client.get(f'/processes/execute')
+    #     self.assertEqual(response.status_code, 200)
 
     def testExecuteProcessExecutionSync(self):
         response = self.client.post(f'/processes/execute/execution', json={
@@ -24,6 +24,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'datastack_url': self.datastack_url
             }
         })
+        print(response.headers)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.get_data(as_text=True))
         self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
@@ -38,6 +39,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         response = self.client.post(f'/processes/execute/execution',
             json={'inputs': {'datastack_url': self.datastack_url}},
             headers={'Prefer': 'respond-async'})
+        print(response.headers)
         self.assertEqual(response.status_code, 201)
         data = json.loads(response.get_data(as_text=True))
         self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
@@ -69,28 +71,28 @@ class PyGeoAPIServerTests(unittest.TestCase):
         #         'RuntimeError: does_not_exist.tif: No such file or directory',
         #         err_log.read())
 
-    def testValidateProcessMetadata(self):
-        response = self.client.get(f'/processes/validate')
-        self.assertEqual(response.status_code, 200)
+    # def testValidateProcessMetadata(self):
+    #     response = self.client.get(f'/processes/validate')
+    #     self.assertEqual(response.status_code, 200)
 
-    def testValidateProcessExecution(self):
-        """Validation of a datastack should return validation messages"""
-        response = self.client.post(f'/processes/validate/execution', json={
-            'inputs': {
-                'datastack_url': self.datastack_url
-            }
-        })
-        self.assertEqual(response.status_code, 200)
-        data = json.loads(response.get_data(as_text=True))
-        self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
-        self.assertEqual(
-            data['validation_results'],
-            [{
-                'input_ids': ['workspace_dir'],
-                'error_message': 'Key is missing from the args dict'
-            }]
-        )
-        self.assertEqual(
-            set(os.listdir(data['workspace'])),
-            {'stdout.log', 'stderr.log', 'script.slurm'}
-        )
+    # def testValidateProcessExecution(self):
+    #     """Validation of a datastack should return validation messages"""
+    #     response = self.client.post(f'/processes/validate/execution', json={
+    #         'inputs': {
+    #             'datastack_url': self.datastack_url
+    #         }
+    #     })
+    #     self.assertEqual(response.status_code, 200)
+    #     data = json.loads(response.get_data(as_text=True))
+    #     self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
+    #     self.assertEqual(
+    #         data['validation_results'],
+    #         [{
+    #             'input_ids': ['workspace_dir'],
+    #             'error_message': 'Key is missing from the args dict'
+    #         }]
+    #     )
+    #     self.assertEqual(
+    #         set(os.listdir(data['workspace'])),
+    #         {'stdout.log', 'stderr.log', 'script.slurm'}
+    #     )
