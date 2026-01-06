@@ -247,11 +247,13 @@ class SlurmManager(BaseManager):
         return job_id, mime_type, outputs, status.value, response_headers
 
 
-    def monitor_job_status(self, job_id, workspace_dir):
+    def monitor_job_status(self, job_id, workspace_dir, process_output_func):
         """Poll the slurm job until it completes, then perform final processing.
 
         Args:
             job_id:
+            workspace_dir:
+            process_output_func:
 
         Returns:
         """
@@ -276,7 +278,7 @@ class SlurmManager(BaseManager):
             if exit_code != 0:
                 LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
 
-            outputs = processor.process_output(workspace_dir)
+            outputs = process_output_func(workspace_dir)
             outputs['workspace'] = workspace_dir
 
         except Exception as err:
@@ -336,7 +338,9 @@ class SlurmManager(BaseManager):
             raise ex
 
         # Monitor job in a separate thread until it completes
-        monitor_thread = threading.Thread(target=self.monitor_job_status, args=(job_id, workspace_dir))
+        monitor_thread = threading.Thread(
+            target=self.monitor_job_status,
+            args=(job_id, workspace_dir, processor.process_output))
         monitor_thread.start()
         monitor_thread.join()
 
@@ -385,7 +389,9 @@ class SlurmManager(BaseManager):
             raise ex
 
         # Monitor job in a separate thread, don't wait for it to complete
-        monitor_thread = threading.Thread(target=self.monitor_job_status, args=(job_id, workspace_dir))
+        monitor_thread = threading.Thread(
+            target=self.monitor_job_status,
+            args=(job_id, workspace_dir, processor.process_output))
         monitor_thread.start()
 
         outputs = {
