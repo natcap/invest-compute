@@ -2,6 +2,7 @@ import importlib
 import json
 import logging
 import os
+import tarfile
 import tempfile
 import textwrap
 import time

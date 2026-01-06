@@ -246,32 +246,14 @@ class SlurmManager(BaseManager):
         return job_id, mime_type, outputs, status, response_headers
 
 
-    def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
-                               subscriber=None, requested_response=RequestedResponse.raw.value):
+    def monitor_job_status(self, job_id):
+        """Poll the slurm job until it completes, then perform final processing.
+
+        Args:
+            job_id:
+
+        Returns:
         """
-        Synchronous execution handler
-
-        If the manager has defined `output_dir`, then the result
-        will be written to disk
-        output store. There is no clean-up of old process outputs.
-
-        :param processor: `pygeoapi.process` object
-        :param data_dict: `dict` of data parameters
-        :param requested_outputs: `dict` optionally specifying the subset of
-                                  required outputs - defaults to all outputs.
-                                  The value of any key may be an object and
-                                  include the property `transmissionMode`
-                                  (defaults to `value`)
-                                  Note: 'optional' is for backward
-                                  compatibility.
-        :param requested_response: `RequestedResponse` optionally specifying
-                                   raw or document (default is `raw`)
-
-        :returns: tuple of MIME type, response payload and status
-        """
-        job_id, mimetype, outputs, status = self._execute_handler_async(
-            processor, data_dict, requested_outputs, requested_response)
-
         try:
             # wait for the slurm job to complete
             while True:
@@ -305,11 +287,9 @@ class SlurmManager(BaseManager):
             # endpoint, even if the /result endpoint correctly returns the
             # failure information (i.e. what one might assume is a 200
             # response).
-            current_status = JobStatus.failed
-            code = 'InvalidParameterValue'
             outputs = {
-                'type': code,
-                'code': code,
+                'type': 'process',
+                'code': 'InvalidParameterValue',
                 'description': f'Error executing process: {err}',
                 'workspace': workspace_dir
             }
@@ -322,7 +302,54 @@ class SlurmManager(BaseManager):
             upload_directory_to_bucket(workspace_dir, BUCKET_NAME)
 
 
-        return 'application/json', None, JobStatus.accepted
+    def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
+                               subscriber=None, requested_response=RequestedResponse.raw.value):
+        """
+        Synchronous execution handler
+
+        If the manager has defined `output_dir`, then the result
+        will be written to disk
+        output store. There is no clean-up of old process outputs.
+
+        :param processor: `pygeoapi.process` object
+        :param data_dict: `dict` of data parameters
+        :param requested_outputs: `dict` optionally specifying the subset of
+                                  required outputs - defaults to all outputs.
+                                  The value of any key may be an object and
+                                  include the property `transmissionMode`
+                                  (defaults to `value`)
+                                  Note: 'optional' is for backward
+                                  compatibility.
+        :param requested_response: `RequestedResponse` optionally specifying
+                                   raw or document (default is `raw`)
+
+        :returns: tuple of MIME type, response payload and status
+        """
+        try:
+            job_id, workspace_dir = self.submit_slurm_job(processor, data_dict)
+        except Exception as ex:
+            LOGGER.error(
+                'Something went wrong while trying to submit the slurm job. '
+                'We do not have a job id or workspace yet, so there is nothing to '
+                'return to the user.')
+            raise ex
+
+        # Monitor job in a separate thread until it completes
+        monitor_thread = threading.Thread(target=self.monitor_job_status, args=(job_id,))
+        monitor_thread.start()
+        monitor_thread.join()
+
+        final_status = self.get_job(job_id)
+        outputs = {
+            'job_id': job_id,
+            'status': final_status,
+            'type': 'process'
+        }
+        if requested_response == RequestedResponse.document.value:
+            outputs = {
+                'outputs': [outputs]
+            }
+        return 'application/json', None, final_status
 
 
     def _execute_handler_async(self, processor, data_dict, requested_outputs=None,
@@ -356,17 +383,19 @@ class SlurmManager(BaseManager):
                 'return to the user.')
             raise ex
 
+        # Monitor job in a separate thread, don't wait for it to complete
+        monitor_thread = threading.Thread(target=self.monitor_job_status, args=(job_id,))
+        monitor_thread.start()
+
         outputs = {
             'job_id': job_id,
             'status': JobStatus.accepted,
             'type': 'process'
         }
-
         if requested_response == RequestedResponse.document.value:
             outputs = {
                 'outputs': [outputs]
             }
-
         return job_id, 'application/json', outputs, JobStatus.accepted
 
 
