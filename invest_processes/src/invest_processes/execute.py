@@ -97,6 +97,8 @@ class ExecuteProcessor(BaseProcessor):
             raise ProcessorExecuteError(
                 1, f'Failed to extract datastack archive:\n{str(err)}')
 
+        print(os.listdir(workspace_dir))
+        print(os.listdir(extracted_datastack_dir))
         # Parse the extracted datastack JSON
         json_path = os.path.join(extracted_datastack_dir, 'parameters.invest.json')
         try:
@@ -114,11 +116,6 @@ class ExecuteProcessor(BaseProcessor):
             invest run --datastack {json_path} --workspace {workspace_dir} {model_id}
             """)
 
-
-#
-# $800 every 6 years plus $800 every 6 years = $266/yr
-# $800 every 4 years = $200/yr
-#
     def process_output(self, workspace_dir):
         """Return outputs given a workspace from completed slurm job.
 
