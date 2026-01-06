@@ -244,6 +244,9 @@ class SlurmManager(BaseManager):
             requested_outputs,
             requested_response=requested_response)
 
+        print("Status:")
+        print(status)
+        print(status.value)
         return job_id, mime_type, outputs, status.value, response_headers
 
 
