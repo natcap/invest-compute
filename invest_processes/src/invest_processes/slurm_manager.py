@@ -275,6 +275,7 @@ class SlurmManager(BaseManager):
         try:
             # wait for the slurm job to complete
             while True:
+                time.sleep(1)
                 # check the 'state' string from the job data in sacct
                 status = self.get_job(job_id)
                 LOGGER.debug(f'Status of slurm job {job_id}: {status}')
@@ -282,7 +283,6 @@ class SlurmManager(BaseManager):
                 # TODO: make this more resilient to other possible job states
                 if status in {JobStatus.successful, JobStatus.failed, JobStatus.dismissed}:
                     break
-                time.sleep(1)
 
             # get the exit code from the job data in sacct
             exit_code = int(subprocess.run([
@@ -356,10 +356,9 @@ class SlurmManager(BaseManager):
                 'return to the user.')
             raise ex
 
-        job_status = self.get_job(job_id)
         outputs = {
             'job_id': job_id,
-            'status': job_status,
+            'status': JobStatus.accepted,
             'type': 'process'
         }
 

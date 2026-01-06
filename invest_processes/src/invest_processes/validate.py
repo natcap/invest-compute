@@ -8,6 +8,7 @@ import time
 
 from natcap.invest import datastack, models, spec, utils
 from pygeoapi.process.base import BaseProcessor, ProcessorExecuteError
+import requests
 
 LOGGER = logging.getLogger(__name__)
 
