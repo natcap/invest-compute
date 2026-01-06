@@ -280,7 +280,7 @@ class SlurmManager(BaseManager):
                 LOGGER.debug(f'Status of slurm job {job_id}: {status}')
 
                 # TODO: make this more resilient to other possible job states
-                if status == 'COMPLETED' or status == 'FAILED':
+                if status in {JobStatus.successful, JobStatus.failed, JobStatus.dismissed}:
                     break
                 time.sleep(1)
 
