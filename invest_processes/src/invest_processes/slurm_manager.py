@@ -270,10 +270,7 @@ class SlurmManager(BaseManager):
         :returns: tuple of MIME type, response payload and status
         """
         job_id, mimetype, outputs, status = self._execute_handler_async(
-            processor, data_dict, requested_outputs, subscriber, requested_response)
-
-        # _process = dummy.Process(target=self._execute_handler_sync, args=args)
-        # _process.start()
+            processor, data_dict, requested_outputs, requested_response)
 
         try:
             # wait for the slurm job to complete
