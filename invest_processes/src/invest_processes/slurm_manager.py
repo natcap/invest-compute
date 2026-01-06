@@ -350,7 +350,7 @@ class SlurmManager(BaseManager):
             outputs = {
                 'outputs': [outputs]
             }
-        return 'application/json', None, final_status
+        return job_id, 'application/json', outputs, final_status
 
 
     def _execute_handler_async(self, processor, data_dict, requested_outputs=None,
