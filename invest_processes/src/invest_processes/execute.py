@@ -92,7 +92,7 @@ class ExecuteProcessor(BaseProcessor):
         extracted_datastack_dir = os.path.join(workspace_dir, 'datastack')
         try:
             with tarfile.open(tgz_path, 'r:gz') as tgz:
-                tgz.extractall(path=extracted_datastack_dir)
+                tgz.extractall(path=extracted_datastack_dir, filter='data')
         except Exception as err:
             raise ProcessorExecuteError(
                 1, f'Failed to extract datastack archive:\n{str(err)}')
