@@ -9,8 +9,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
 
     def setUp(self):
         self.client = flask_app.APP.test_client()
-        self.datastack_path = os.path.abspath(os.path.join(
-            os.path.dirname(__file__), 'test_data/carbon_willamette.invs.json'))
+        self.datastack_url = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_datastack.tgz'
 
     def tearDown(self):
         pass
@@ -22,7 +21,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
     def testExecuteProcessExecution(self):
         response = self.client.post(f'/processes/execute/execution', json={
             'inputs': {
-                'datastack_path': self.datastack_path
+                'datastack_url': self.datastack_url
             }
         })
         self.assertEqual(response.status_code, 200)
@@ -39,7 +38,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         response = self.client.post(f'/processes/execute/execution', json={
             'inputs': {
                 # this datastack includes an invalid raster path
-                'datastack_path': os.path.abspath(os.path.join(
+                'datastack_url': os.path.abspath(os.path.join(
                     os.path.dirname(__file__), 'test_data/carbon_error.invs.json'))
             }
         })
@@ -64,7 +63,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         """Validation of a datastack should return validation messages"""
         response = self.client.post(f'/processes/validate/execution', json={
             'inputs': {
-                'datastack_path': self.datastack_path
+                'datastack_url': self.datastack_url
             }
         })
         self.assertEqual(response.status_code, 200)
