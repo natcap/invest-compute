@@ -18,7 +18,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         response = self.client.get(f'/processes/execute')
         self.assertEqual(response.status_code, 200)
 
-    def testExecuteProcessExecution(self):
+    def testExecuteProcessExecutionSync(self):
         response = self.client.post(f'/processes/execute/execution', json={
             'inputs': {
                 'datastack_url': self.datastack_url
@@ -26,14 +26,28 @@ class PyGeoAPIServerTests(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.get_data(as_text=True))
-        self.assertEqual(set(data.keys()), {'workspace'})
-        self.assertEqual(
-            set(os.listdir(data['workspace'])),
-            {'stdout.log', 'stderr.log', 'script.slurm', 'carbon_workspace'}
-        )
+        self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
+        self.assertEqual(data['status'], 'successful')
+        # self.assertEqual(
+        #     set(os.listdir(data['workspace'])),
+        #     {'stdout.log', 'stderr.log', 'script.slurm', 'carbon_workspace'}
+        # )
         # curl -X POST -H "Content-Type: application/json" -d '{"inputs": {"datastack_url": "https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_datastack.tgz"}}' localhost:5000/processes/execute/execution
 
-    def testExecuteProcessError(self):
+    def testExecuteProcessExecutionAsync(self):
+        response = self.client.post(f'/processes/execute/execution',
+            json={'inputs': {'datastack_url': self.datastack_url}},
+            headers={'Prefer': 'respond-async'})
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.get_data(as_text=True))
+        self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
+        self.assertEqual(data['status'], 'accepted')
+        # self.assertEqual(
+        #     set(os.listdir(data['workspace'])),
+        #     {'stdout.log', 'stderr.log', 'script.slurm', 'carbon_workspace'}
+        # )
+
+    def testExecuteProcessErrorSync(self):
         """Test executing a datastack that should cause a model error."""
         response = self.client.post(f'/processes/execute/execution', json={
             'inputs': {
@@ -43,7 +57,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.get_data(as_text=True))
-        self.assertEqual(set(data.keys()), {'workspace'})
+        self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
         self.assertEqual(
             set(os.listdir(data['workspace'])),
             {'stdout.log', 'stderr.log', 'script.slurm', 'carbon_workspace'}
@@ -67,7 +81,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.get_data(as_text=True))
-        self.assertEqual(set(data.keys()), {'validation_results', 'workspace'})
+        self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
         self.assertEqual(
             data['validation_results'],
             [{
