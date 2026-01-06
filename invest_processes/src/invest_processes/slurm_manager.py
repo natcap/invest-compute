@@ -247,7 +247,7 @@ class SlurmManager(BaseManager):
         return job_id, mime_type, outputs, status, response_headers
 
 
-    def monitor_job_status(self, job_id):
+    def monitor_job_status(self, job_id, workspace_dir):
         """Poll the slurm job until it completes, then perform final processing.
 
         Args:
@@ -336,7 +336,7 @@ class SlurmManager(BaseManager):
             raise ex
 
         # Monitor job in a separate thread until it completes
-        monitor_thread = threading.Thread(target=self.monitor_job_status, args=(job_id,))
+        monitor_thread = threading.Thread(target=self.monitor_job_status, args=(job_id, workspace_dir))
         monitor_thread.start()
         monitor_thread.join()
 
@@ -385,7 +385,7 @@ class SlurmManager(BaseManager):
             raise ex
 
         # Monitor job in a separate thread, don't wait for it to complete
-        monitor_thread = threading.Thread(target=self.monitor_job_status, args=(job_id,))
+        monitor_thread = threading.Thread(target=self.monitor_job_status, args=(job_id, workspace_dir))
         monitor_thread.start()
 
         outputs = {
