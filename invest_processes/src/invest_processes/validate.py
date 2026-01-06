@@ -22,7 +22,7 @@ PROCESS_METADATA = {
     'description': {
         'en': 'A process that validates inputs to an InVEST model.'
     },
-    'jobControlOptions': ['async-execute'],
+    'jobControlOptions': ['async-execute', 'sync-execute'],
     'keywords': ['invest'],
     'inputs': {
         'datastack_path': {

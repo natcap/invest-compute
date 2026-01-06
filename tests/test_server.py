@@ -38,7 +38,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         response = self.client.post(f'/processes/execute/execution',
             json={'inputs': {'datastack_url': self.datastack_url}},
             headers={'Prefer': 'respond-async'})
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         data = json.loads(response.get_data(as_text=True))
         self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
         self.assertEqual(data['status'], 'accepted')
