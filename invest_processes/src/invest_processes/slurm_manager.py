@@ -251,7 +251,7 @@ class SlurmManager(BaseManager):
         print("Status:")
         print(status)
         print(status.value)
-        return job_id, mime_type, outputs, status.value, response_headers
+        return job_id, mime_type, outputs, status, response_headers
 
 
     def monitor_job_status(self, job_id, workspace_dir, process_output_func):
