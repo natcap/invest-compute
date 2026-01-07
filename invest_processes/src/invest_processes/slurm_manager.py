@@ -490,14 +490,14 @@ class SlurmManager(BaseManager):
         job_metadata = json.dumps({
             'workdir': workspace_dir,
             'process_id': processor.metadata['id']
-        }).replace('"', "'")
+        }).replace('"', '\\\"')
         print(job_metadata)
 
         # Submit the job
         try:
             args = [
                 'sbatch', '--parsable',
-                '--comment', f'"workdir: foo"',  # custom metadata
+                '--comment', f'"{job_metadata}"',  # custom metadata
                 '--chdir', workspace_dir,
                 '--output', 'stdout.log',  # relative to the slurm workspace dir
                 '--error', 'stderr.log',
