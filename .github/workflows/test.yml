@@ -152,6 +152,7 @@ jobs:
           sbatch -N 1 --mem 5 --comment "{'foo' 'bar'}" --wrap "echo 'hello 3'"
           sbatch -N 1 --mem 5 --comment "{'foo': 'bar'}" --wrap "echo 'hello 3'"
           sbatch -N 1 --mem 5 --comment "{'foo': '/bar/baz'}" --wrap "echo 'hello 3'"
+          sbatch -N 1 --mem 5 --comment "{'foo': '\/bar\/baz'}" --wrap "echo 'hello 3'"
           sbatch -N 1 --mem 5 --comment "{workdir: /home/runner/work/invest-compute/invest-compute/workspaces/slurm_wksp_4qh_27hb, process_id: invest-execute}" --wrap "echo 'hello 3'"
           sleep 10
           sacct --format=JobID,JobName,Comment
