@@ -146,7 +146,7 @@ jobs:
         run: |
           sbatch -vvvv -N 1 --mem 5 --comment "foo" --wrap "echo 'hello world'"
           sleep 10
-          sacct --state=COMPLETED --format=JobID,JobName,Comment --starttime=today-1
+          sacct --format=JobID,JobName,Comment
 
       ############################################################
 
