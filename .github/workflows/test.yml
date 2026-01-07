@@ -47,6 +47,12 @@ jobs:
 
       - uses: koesterlab/setup-slurm-action@v1
 
+      - name: configure slurm
+        run: |
+          cat /etc/slurm/slurm.conf
+          echo "JobComment=yes" > /etc/slurm/slurm.conf
+          scontrol reconfig
+
       - name: Setup conda environment
         uses: mamba-org/setup-micromamba@v2
         with:
