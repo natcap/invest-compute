@@ -488,7 +488,7 @@ class SlurmManager(BaseManager):
         try:
             args = [
                 'sbatch', '--parsable',
-                '--comment', f'workdir: {workspace_dir}',  # custom metadata
+                '--comment', f'"workdir: {workspace_dir}"',  # custom metadata
                 '--chdir', workspace_dir,
                 '--output', 'stdout.log',  # relative to the slurm workspace dir
                 '--error', 'stderr.log',
