@@ -487,16 +487,17 @@ class SlurmManager(BaseManager):
         with open(script_path) as fp:
             LOGGER.debug(fp.read())
 
-        job_metadata = {
+        job_metadata = json.dumps({
             'workdir': workspace_dir,
             'process_id': processor.metadata['id']
-        }
+        })
+        print(job_metadata)
 
         # Submit the job
         try:
             args = [
                 'sbatch', '--parsable',
-                '--comment', f'"{json.dumps(job_metadata)}"',  # custom metadata
+                '--comment', f'\'{job_metadata}\'',  # custom metadata
                 '--chdir', workspace_dir,
                 '--output', 'stdout.log',  # relative to the slurm workspace dir
                 '--error', 'stderr.log',
