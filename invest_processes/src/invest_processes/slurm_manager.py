@@ -186,7 +186,7 @@ class SlurmManager(BaseManager):
             "status": self.get_job_status(job_id),
             # "location": nc_file,
             # "mimetype": "application/x-netcdf",
-            # "message": "Job complete",
+            "message": "",
             # "progress": 100
         }
         return job_metadata
