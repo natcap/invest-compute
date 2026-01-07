@@ -101,9 +101,9 @@ jobs:
                   slurm_nodes:
                       - name: localhost
                         State: UNKNOWN
-                        Sockets: ${{ inputs.cpus }}
+                        Sockets: 1
                         CoresPerSocket: 2
-                        RealMemory: ${{ inputs.memory }}
+                        RealMemory: 2000
                   slurm_user:
                       comment: "Slurm Workload Manager"
                       gid: 1002
