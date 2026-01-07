@@ -145,9 +145,9 @@ class SlurmManager(BaseManager):
         }
         return status_map[status]
 
-    def get_job_workdir(self, job_id):
+    def get_job_metadata(self, job_id):
         """
-        Get a job's working directory.
+        Get a job's metadata as stored in the slurm job comment.
 
         :param job_id: job identifier
 
@@ -155,28 +155,13 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        print(subprocess.run([
-            'sacct', '-o', 'JobID,Comment%1000'
-        ], capture_output=True, text=True, check=True).stdout.strip())
-        print('********')
-        print(subprocess.run([
-            'sacct', '-j', job_id, '-o', 'Comment%1000'
-        ], capture_output=True, text=True, check=True).stdout.strip())
-        print('********')
-        print(subprocess.run([
-            'sacct', '--noheader', '-j', job_id, '-o', 'Comment%1000'
-        ], capture_output=True, text=True, check=True).stdout.strip())
-        print('********')
         comment = subprocess.run([
             'sacct', '--noheader', '-X',
             '-j', job_id,
             '-o', 'Comment%1000'
         ], capture_output=True, text=True, check=True).stdout.strip()
-        print(comment)
-        print('********')
         job_metadata = json.loads(comment)
-        print(job_metadata)
-        return job_metadata['workdir']
+        return job_metadata
 
     def get_job(self, job_id: str) -> dict:
         """
@@ -188,12 +173,12 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        workdir = self.get_job_workdir(job_id)
-        print('work dir:', workdir)
+        job_metadata = self.get_job_metadata(job_id)
+        print(job_metadata)
         job_metadata = {
             "type": "process",
             "identifier": job_id,
-            # "process_id": "dummy",
+            "process_id": job_metadata['process_id'],
             # "created": "2024-08-22T12:00:00.000000Z",
             # "started": "2024-08-22T12:00:00.000000Z",
             # "finished": "2024-08-22T12:00:01.000000Z",
