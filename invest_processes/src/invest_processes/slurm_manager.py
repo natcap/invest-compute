@@ -108,9 +108,9 @@ class SlurmManager(BaseManager):
 
         raise NotImplementedError()
 
-    def get_job(self, job_id: str) -> dict:
+    def get_job_status(self, job_id):
         """
-        Get a job status. Called by the /jobs/<job_id> endpoint.
+        Get a job's status.
 
         :param job_id: job identifier
 
@@ -143,9 +143,52 @@ class SlurmManager(BaseManager):
             'SUSPENDED': JobStatus.dismissed,   # allocated resources but execution suspended, such as from preemption or a direct request from an authorized user
             'TIMEOUT': JobStatus.failed         # terminated due to reaching the time limit, such as those configured in slurm.conf or specified for the individual job
         }
-
         return status_map[status]
 
+    def get_job_workdir(self, job_id):
+        """
+        Get a job's working directory.
+
+        :param job_id: job identifier
+
+        :raises JobNotFoundError: if the job_id does not correspond to a
+                                  known job
+        :returns: `dict` of job result
+        """
+        workdir = subprocess.run([
+            'sacct', '--noheader', '-X',
+            '-j', job_id,
+            '-o', 'WorkDir'
+        ], capture_output=True, text=True, check=True).stdout.strip()
+        return workdir
+
+    def get_job(self, job_id: str) -> dict:
+        """
+        Get a job status. Called by the /jobs/<job_id> endpoint.
+
+        :param job_id: job identifier
+
+        :raises JobNotFoundError: if the job_id does not correspond to a
+                                  known job
+        :returns: `dict` of job result
+        """
+        workdir = self.get_job_workdir(job_id)
+        print('work dir:', workdir)
+        job_metadata = {
+            "type": "process",
+            "identifier": job_id,
+            # "process_id": "dummy",
+            # "created": "2024-08-22T12:00:00.000000Z",
+            # "started": "2024-08-22T12:00:00.000000Z",
+            # "finished": "2024-08-22T12:00:01.000000Z",
+            # "updated": "2024-08-22T12:00:01.000000Z",
+            "status": self.get_job_status(job_id),
+            # "location": nc_file,
+            # "mimetype": "application/x-netcdf",
+            # "message": "Job complete",
+            # "progress": 100
+        }
+        return job_metadata
 
     def get_job_result(self, job_id: str) -> Tuple[str, Any]:
         """
@@ -269,7 +312,7 @@ class SlurmManager(BaseManager):
             while True:
                 time.sleep(1)
                 # check the 'state' string from the job data in sacct
-                status = self.get_job(job_id)
+                status = self.get_job_status(job_id)
                 LOGGER.debug(f'Status of slurm job {job_id}: {status}')
 
                 # TODO: make this more resilient to other possible job states
@@ -351,7 +394,7 @@ class SlurmManager(BaseManager):
         monitor_thread.start()
         monitor_thread.join()
 
-        final_status = self.get_job(job_id)
+        final_status = self.get_job_status(job_id)
         outputs = {
             'job_id': job_id,
             'status': final_status.value,
