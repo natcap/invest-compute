@@ -487,12 +487,9 @@ class SlurmManager(BaseManager):
         with open(script_path) as fp:
             LOGGER.debug(fp.read())
 
-        print(processor.metadata)
-        print(processor.name)
-
         job_metadata = {
             'workdir': workspace_dir,
-            'process_id': processor.metadata.id
+            'process_id': processor.metadata['id']
         }
 
         # Submit the job
