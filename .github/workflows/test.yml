@@ -113,12 +113,6 @@ jobs:
                       shell: "/bin/bash"
                       uid: 1002
 
-      - name: test
-        if: always()
-        run: |
-          systemctl status slurmctld.service
-          journalctl -xeu slurmctld.service
-
       - name: Set XDG_RUNTIME_DIR
         shell: bash -e {0}
         run: |
@@ -151,14 +145,7 @@ jobs:
         shell: bash -e {0}
         run: |
           sbatch -vvvv -N 1 --mem 5 --wrap "echo 'hello world'"
-
       ############################################################
-
-      - name: configure slurm
-        run: |
-          cat /etc/slurm/slurm.conf
-          echo "JobComment=yes" > /etc/slurm/slurm.conf
-          scontrol reconfig
 
       - name: Setup conda environment
         uses: mamba-org/setup-micromamba@v2
