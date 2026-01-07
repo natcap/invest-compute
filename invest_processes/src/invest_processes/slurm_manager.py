@@ -158,7 +158,7 @@ class SlurmManager(BaseManager):
         workdir = subprocess.run([
             'sacct', '--noheader', '-X',
             '-j', job_id,
-            '-o', 'WorkDir'
+            '-o', 'Comment'
         ], capture_output=True, text=True, check=True).stdout.strip()
         return workdir
 
@@ -488,6 +488,7 @@ class SlurmManager(BaseManager):
         try:
             args = [
                 'sbatch', '--parsable',
+                '--comment', f'workdir: {workspace_dir}',  # custom metadata
                 '--chdir', workspace_dir,
                 '--output', 'stdout.log',  # relative to the slurm workspace dir
                 '--error', 'stderr.log',
