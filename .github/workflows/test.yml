@@ -87,7 +87,6 @@ jobs:
                       SlurmdSpoolDir: /tmp/slurmd # the default /var/lib/slurm/slurmd does not work because of noexec mounting in github actions
                       StateSaveLocation: /var/lib/slurm/slurmctld
                       AccountingStorageType: accounting_storage/slurmdbd
-                      AccountingStoreFlags: job_comment
                       SelectType: select/cons_tres
                   slurmdbd_config:
                       StorageType: accounting_storage/mysql
@@ -113,6 +112,12 @@ jobs:
                       name: slurm
                       shell: "/bin/bash"
                       uid: 1002
+
+      - name: test
+        if: always()
+        run: |
+          systemctl status slurmctld.service
+          journalctl -xeu slurmctld.service
 
       - name: Set XDG_RUNTIME_DIR
         shell: bash -e {0}
