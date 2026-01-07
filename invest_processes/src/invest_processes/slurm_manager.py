@@ -158,13 +158,22 @@ class SlurmManager(BaseManager):
         print(subprocess.run([
             'sacct', '-o', 'JobID,Comment%1000'
         ], capture_output=True, text=True, check=True).stdout.strip())
-
+        print('********')
+        print(subprocess.run([
+            'sacct', '-j', job_id, '-o', 'Comment%1000'
+        ], capture_output=True, text=True, check=True).stdout.strip())
+        print('********')
+        print(subprocess.run([
+            'sacct', '--noheader', '-j', job_id, '-o', 'Comment%1000'
+        ], capture_output=True, text=True, check=True).stdout.strip())
+        print('********')
         comment = subprocess.run([
             'sacct', '--noheader', '-X',
             '-j', job_id,
             '-o', 'Comment%1000'
         ], capture_output=True, text=True, check=True).stdout.strip()
         print(comment)
+        print('********')
         job_metadata = json.loads(comment)
         print(job_metadata)
         return job_metadata['workdir']
