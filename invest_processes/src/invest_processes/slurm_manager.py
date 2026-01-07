@@ -155,12 +155,15 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        workdir = subprocess.run([
+        comment = subprocess.run([
             'sacct', '--noheader', '-X',
             '-j', job_id,
             '-o', 'Comment'
         ], capture_output=True, text=True, check=True).stdout.strip()
-        return workdir
+        print(comment)
+        job_metadata = json.loads(comment)
+        print(job_metadata)
+        return job_metadata['workdir']
 
     def get_job(self, job_id: str) -> dict:
         """
@@ -484,11 +487,16 @@ class SlurmManager(BaseManager):
         with open(script_path) as fp:
             LOGGER.debug(fp.read())
 
+        job_metadata = {
+            'workdir': workspace_dir,
+            'process_id': processor.process_id
+        }
+
         # Submit the job
         try:
             args = [
                 'sbatch', '--parsable',
-                '--comment', f'"foo"',  # custom metadata
+                '--comment', f'"{json.dumps(job_metadata)}"',  # custom metadata
                 '--chdir', workspace_dir,
                 '--output', 'stdout.log',  # relative to the slurm workspace dir
                 '--error', 'stderr.log',
