@@ -490,7 +490,7 @@ class SlurmManager(BaseManager):
         job_metadata = json.dumps({
             'workdir': workspace_dir,
             'process_id': processor.metadata['id']
-        }).replace('"', '*')
+        }).replace('"', '')
         print(job_metadata)
 
         # Submit the job
