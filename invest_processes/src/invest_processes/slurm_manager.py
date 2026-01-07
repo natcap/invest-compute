@@ -162,7 +162,7 @@ class SlurmManager(BaseManager):
         comment = subprocess.run([
             'sacct', '--noheader', '-X',
             '-j', job_id,
-            '-o', 'Comment'
+            '-o', 'Comment%1000'
         ], capture_output=True, text=True, check=True).stdout.strip()
         print(comment)
         job_metadata = json.loads(comment)
@@ -494,14 +494,14 @@ class SlurmManager(BaseManager):
         job_metadata = json.dumps({
             'workdir': workspace_dir,
             'process_id': processor.metadata['id']
-        }).replace('/', '\\/')
+        })
         print(job_metadata)
 
         # Submit the job
         try:
             args = [
                 'sbatch', '--parsable',
-                '--comment', f'"{job_metadata}"',  # custom metadata
+                '--comment', f'\'{job_metadata}\'',  # custom metadata
                 '--chdir', workspace_dir,
                 '--output', 'stdout.log',  # relative to the slurm workspace dir
                 '--error', 'stderr.log',
