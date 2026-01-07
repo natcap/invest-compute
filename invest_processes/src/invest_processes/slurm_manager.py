@@ -155,6 +155,10 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
+        print(subprocess.run([
+            'sacct', '-o', 'JobID,Comment'
+        ], capture_output=True, text=True, check=True).stdout.strip())
+
         comment = subprocess.run([
             'sacct', '--noheader', '-X',
             '-j', job_id,
