@@ -144,7 +144,10 @@ jobs:
       - name: Test sbatch submission
         shell: bash -e {0}
         run: |
-          sbatch -vvvv -N 1 --mem 5 --wrap "echo 'hello world'"
+          sbatch -vvvv -N 1 --mem 5 --comment "foo" --wrap "echo 'hello world'"
+          sleep 10
+          sacct --state=COMPLETED --format=JobID,JobName,Comment --starttime=today-1
+
       ############################################################
 
       - name: Setup conda environment
