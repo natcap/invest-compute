@@ -34,7 +34,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
 
         response = json.loads(self.client.get(
             f'/jobs/{data["job_id"]}').get_data(as_text=True))
-        self.assertEqual(payload['status'], 'successful')
+        self.assertEqual(response['status'], 'successful')
 
         response = json.loads(self.client.get(
             f'/jobs/{data["job_id"]}/results?f=json').get_data(as_text=True))
