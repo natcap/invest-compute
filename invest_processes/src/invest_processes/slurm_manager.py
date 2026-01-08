@@ -24,7 +24,7 @@ from pygeoapi.util import (
 LOGGER = logging.getLogger(__name__)
 BUCKET_NAME = 'invest-compute-workspaces'
 STORAGE_CLIENT = storage.Client()
-BUCKET = STORAGE_CLIENT.bucket(bucket_name)
+BUCKET = STORAGE_CLIENT.bucket(BUCKET_NAME)
 
 def upload_directory_to_bucket(dir_path):
     """Upload everything in a given directory to the GCP bucket.
