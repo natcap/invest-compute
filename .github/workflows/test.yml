@@ -130,35 +130,6 @@ jobs:
         run: |
           sudo retry --times=24 --delay=5 --until=success -- sacctmgr -i create account "Name=runner"
           sudo retry --times=24 --delay=5 --until=success -- sacctmgr -i create user "Name=runner" "Account=runner"
-
-      - name: Test srun submission
-        shell: bash -e {0}
-        run: |
-          srun -vvvv echo "hello world"
-          sudo cat /var/log/slurm/slurmd.log
-
-      - name: Show partition info
-        shell: bash -e {0}
-        run: |
-          scontrol show partition
-
-      - name: Test sbatch submission
-        shell: bash -e {0}
-        run: |
-          # sbatch -N 1 --mem 5 --comment "foo" --wrap "echo 'hello 1'"
-          # sbatch -N 1 --mem 5 --comment "foo bar" --wrap "echo 'hello 2'"
-          # sbatch -N 1 --mem 5 --comment "foo: bar" --wrap "echo 'hello 3'"
-          # sbatch -N 1 --mem 5 --comment "'foo' 'bar'" --wrap "echo 'hello 3'"
-          # sbatch -N 1 --mem 5 --comment "{'foo' 'bar'}" --wrap "echo 'hello 3'"
-          sbatch -N 1 --mem 5 --comment "{'foo': 'bar'}" --wrap "echo 'hello 3'"
-          sbatch -N 1 --mem 5 --comment "{'foo': '/bar/baz'}" --wrap "echo 'hello 3'"
-          sbatch -N 1 --mem 5 --comment "{'foo': '\bar\baz'}" --wrap "echo 'hello 3'"
-          sbatch -N 1 --mem 5 --comment "'{\"foo\": \"/bar/baz\"}'" --wrap "echo 'hello 3'"
-          sbatch -N 1 --mem 5 --comment "{'foo': '\/bar\/baz'}" --wrap "echo 'hello 3'"
-          sbatch -N 1 --mem 5 --comment "{workdir: /home/runner/work/invest-compute/invest-compute/workspaces/slurm_wksp_4qh_27hb, process_id: invest-execute}" --wrap "echo 'hello 3'"
-          sleep 10
-          sacct --format=JobID,JobName,Comment%1000
-
       ############################################################
 
       - name: Setup conda environment
@@ -191,4 +162,4 @@ jobs:
           export PYGEOAPI_CONFIG=invest_processes/pygeoapi-config.yml
           export PYGEOAPI_OPENAPI=invest_processes/openapi.yml
           pygeoapi openapi generate $PYGEOAPI_CONFIG --output-file $PYGEOAPI_OPENAPI
-          pytest -s --log-cli-level=INFO tests/
+          pytest -s tests/
