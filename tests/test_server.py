@@ -62,19 +62,47 @@ class PyGeoAPIServerTests(unittest.TestCase):
         )
         # curl -X POST -H "Content-Type: application/json" -d '{"inputs": {"datastack_url": "https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_datastack.tgz"}}' localhost:5000/processes/execute/execution
 
-    # def testExecuteProcessExecutionAsync(self):
-    #     response = self.client.post(f'/processes/execute/execution',
-    #         json={'inputs': {'datastack_url': self.datastack_url}},
-    #         headers={'Prefer': 'respond-async'})
-    #     print(response.headers)
-    #     self.assertEqual(response.status_code, 201)
-    #     data = json.loads(response.get_data(as_text=True))
-    #     self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
-    #     self.assertEqual(data['status'], 'accepted')
-    #     # self.assertEqual(
-    #     #     set(os.listdir(data['workspace'])),
-    #     #     {'stdout.log', 'stderr.log', 'script.slurm', 'carbon_workspace'}
-    #     # )
+    def testExecuteProcessExecutionAsync(self):
+        response = self.client.post(f'/processes/execute/execution',
+            json={'inputs': {'datastack_url': self.datastack_url}},
+            headers={'Prefer': 'respond-async'})
+        print(response.headers)
+        self.assertEqual(response.status_code, 201)
+        data = json.loads(response.get_data(as_text=True))
+        self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
+        self.assertEqual(data['status'], 'accepted')
+        self.assertEqual(data['type'], 'process')  # according to the OGC standard this should always be 'process'
+        self.assertEqual(response.headers['Location'], f'http://localhost:5000/jobs/{data["job_id"]}')
+
+        # poll status until the job finishes
+        while True:
+            response = json.loads(self.client.get(
+                f'/jobs/{data["job_id"]}').get_data(as_text=True))
+            print('status:', response['status'])
+            self.assertNotIn(response['status'], {'failed', 'dismissed'})
+            if response['status'] == 'successful':
+                break
+
+        response = json.loads(self.client.get(
+            f'/jobs/{data["job_id"]}/results?f=json').get_data(as_text=True))
+        local_dest_path = os.path.join(self.workspace_dir, 'results')
+        os.mkdir(local_dest_path)
+        subprocess.run([
+            'gcloud', 'storage', 'cp', '--recursive', f'{response['results']}/*', local_dest_path
+        ], check=True)
+        self.assertEqual(
+            set(os.listdir(local_dest_path)),
+            {
+                'datastack.tgz',     # datastack archive downloaded from the input url
+                'datastack',         # extracted datastack directory
+                'stdout.log',        # stdout from the slurm job
+                'stderr.log',        # stderr from the slurm job
+                'script.slurm',      # the slurm script sent to sbatch
+                'carbon_workspace',  # the invest model workspace directory
+                'results.json'       # json results file used by pygeoapi
+            }
+        )
+
 
     # def testExecuteProcessErrorSync(self):
     #     """Test executing a datastack that should cause a model error."""
