@@ -50,7 +50,7 @@ def upload_directory_to_bucket(dir_path):
 
             blob = BUCKET.blob(rel_path)
             blob.upload_from_filename(abs_path)
-            LOGGER.debug(f'Uploaded {abs_path} to gs://{bucket_name}/{rel_path}')
+            LOGGER.debug(f'Uploaded {abs_path} to gs://{BUCKET_NAME}/{rel_path}')
 
 
 class SlurmManager(BaseManager):
