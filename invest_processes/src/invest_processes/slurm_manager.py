@@ -207,7 +207,7 @@ class SlurmManager(BaseManager):
             "started": self.get_job_start_time(job_id),
             "finished": self.get_job_end_time(job_id),
             "updated": self.get_job_submit_time(job_id),
-            "status": self.get_job_status(job_id),
+            "status": self.get_job_status(job_id).value,
             # "location": nc_file,
             # "mimetype": "application/x-netcdf",
             "message": "",
