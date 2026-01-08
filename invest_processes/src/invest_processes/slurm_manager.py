@@ -213,7 +213,7 @@ class SlurmManager(BaseManager):
                                          be returned
         :returns: `tuple` of mimetype and raw output
         """
-        job_metadata = self.get_job_metadata(job_id)
+        job_metadata = self.get_job(job_id)
 
         if job_metadata['status'] != JobStatus.successful.value:
             LOGGER.info("JOBMANAGER - job not finished or failed")
