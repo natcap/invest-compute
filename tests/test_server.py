@@ -45,9 +45,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
             f'/jobs/{data["job_id"]}/results?f=json').get_data(as_text=True))
         print(response)
 
-        bucket_gs_url = response['results']
+        local_dest_path = os.path.join(self.workspace_dir, 'results')
         result = subprocess.run([
-            'gcloud', 'storage', 'cp', '--recursive', bucket_gs_url, self.workspace_dir
+            'gcloud', 'storage', 'cp', '--recursive', f'{response['results']}/*', local_dest_path
         ], capture_output=True, text=True, check=True)
         print(result.stdout)
         print(result.stderr)
