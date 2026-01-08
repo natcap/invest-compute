@@ -145,6 +145,13 @@ class SlurmManager(BaseManager):
         }
         return status_map[status]
 
+    def get_sacct_data(self, job_id, field_name):
+        return subprocess.run([
+            'sacct', '--noheader', '-X',
+            '-j', job_id,
+            '-o', field_name
+        ], capture_output=True, text=True, check=True).stdout.strip()
+
     def get_job_metadata(self, job_id):
         """
         Get a job's metadata as stored in the slurm job comment.
@@ -155,37 +162,17 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        comment = subprocess.run([
-            'sacct', '--noheader', '-X',
-            '-j', job_id,
-            '-o', 'Comment%1000'
-        ], capture_output=True, text=True, check=True).stdout.strip()
-        job_metadata = json.loads(comment)
-        return job_metadata
+        # increase returned field width up to 1000 characters
+        return json.loads(self.get_sacct_data(job_id, 'Comment%1000'))
 
     def get_job_submit_time(self, job_id):
-        submit_time = subprocess.run([
-            'sacct', '--noheader', '-X',
-            '-j', job_id,
-            '-o', 'Submit'
-        ], capture_output=True, text=True, check=True).stdout.strip()
-        return submit_time
+        return self.get_sacct_data(job_id, 'Submit')
 
     def get_job_start_time(self, job_id):
-        start_time = subprocess.run([
-            'sacct', '--noheader', '-X',
-            '-j', job_id,
-            '-o', 'Start'
-        ], capture_output=True, text=True, check=True).stdout.strip()
-        return start_time
+        return self.get_sacct_data(job_id, 'Start')
 
     def get_job_end_time(self, job_id):
-        end_time = subprocess.run([
-            'sacct', '--noheader', '-X',
-            '-j', job_id,
-            '-o', 'End'
-        ], capture_output=True, text=True, check=True).stdout.strip()
-        return end_time
+        return self.get_sacct_data(job_id, 'End')
 
     def get_job(self, job_id: str) -> dict:
         """
@@ -197,18 +184,15 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        slurm_job_metadata = self.get_job_metadata(job_id)
-        print(slurm_job_metadata)
         job_metadata = {
             "type": "process",
             "identifier": job_id,
-            "process_id": slurm_job_metadata['process_id'],
+            "process_id": self.get_job_metadata(job_id)['process_id'],
             "created": self.get_job_submit_time(job_id),
             "started": self.get_job_start_time(job_id),
             "finished": self.get_job_end_time(job_id),
             "updated": self.get_job_submit_time(job_id),
             "status": self.get_job_status(job_id).value,
-            # "location": nc_file,
             "mimetype": "application/json",
             "message": "",
             "progress": -1
