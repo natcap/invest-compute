@@ -214,16 +214,11 @@ class SlurmManager(BaseManager):
         :returns: `tuple` of mimetype and raw output
         """
         job_metadata = self.get_job(job_id)
-
         if job_metadata['status'] != JobStatus.successful.value:
-            LOGGER.info("JOBMANAGER - job not finished or failed")
             return (None,)
-
         with open(job_metadata["location"], "r") as file:
             data = json.load(file)
-
         return job_metadata["mimetype"], data
-
 
     def delete_job(self, job_id: str) -> bool:
         """
@@ -504,10 +499,11 @@ class SlurmManager(BaseManager):
         with open(script_path) as fp:
             LOGGER.debug(fp.read())
 
-        target_bucket_path = f'gs://{BUCKET_NAME}/{workspace_dir}'
+        bucket_url = storage_client.bucket(bucket_name).blob(workspace_dir).public_url
+        print(bucket_url)
         results_json_path = os.path.join(workspace_dir, 'results.json')
         with open(results_json_path, 'w') as fp:
-            fp.write(json.dumps({'results': target_bucket_path}))
+            fp.write(json.dumps({'results': bucket_url}))
 
         job_metadata = json.dumps({
             'workdir': workspace_dir,
