@@ -209,7 +209,7 @@ class SlurmManager(BaseManager):
             "updated": self.get_job_submit_time(job_id),
             "status": self.get_job_status(job_id).value,
             # "location": nc_file,
-            # "mimetype": "application/x-netcdf",
+            "mimetype": "application/json",
             "message": "",
             "progress": -1
         }
