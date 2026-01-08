@@ -163,6 +163,30 @@ class SlurmManager(BaseManager):
         job_metadata = json.loads(comment)
         return job_metadata
 
+    def get_job_submit_time(self, job_id):
+        submit_time = subprocess.run([
+            'sacct', '--noheader', '-X',
+            '-j', job_id,
+            '-o', 'Submit'
+        ], capture_output=True, text=True, check=True).stdout.strip()
+        return submit_time
+
+    def get_job_start_time(self, job_id):
+        start_time = subprocess.run([
+            'sacct', '--noheader', '-X',
+            '-j', job_id,
+            '-o', 'Start'
+        ], capture_output=True, text=True, check=True).stdout.strip()
+        return start_time
+
+    def get_job_end_time(self, job_id):
+        end_time = subprocess.run([
+            'sacct', '--noheader', '-X',
+            '-j', job_id,
+            '-o', 'End'
+        ], capture_output=True, text=True, check=True).stdout.strip()
+        return end_time
+
     def get_job(self, job_id: str) -> dict:
         """
         Get a job status. Called by the /jobs/<job_id> endpoint.
@@ -173,22 +197,23 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        job_metadata = self.get_job_metadata(job_id)
-        print(job_metadata)
+        slurm_job_metadata = self.get_job_metadata(job_id)
+        print(slurm_job_metadata)
         job_metadata = {
             "type": "process",
             "identifier": job_id,
-            "process_id": job_metadata['process_id'],
-            # "created": "2024-08-22T12:00:00.000000Z",
-            # "started": "2024-08-22T12:00:00.000000Z",
-            # "finished": "2024-08-22T12:00:01.000000Z",
-            # "updated": "2024-08-22T12:00:01.000000Z",
+            "process_id": slurm_job_metadata['process_id'],
+            "created": self.get_job_submit_time(job_id),
+            "started": self.get_job_start_time(job_id),
+            "finished": self.get_job_end_time(job_id),
+            "updated": self.get_job_submit_time(job_id),
             "status": self.get_job_status(job_id),
             # "location": nc_file,
             # "mimetype": "application/x-netcdf",
             "message": "",
-            # "progress": 100
+            "progress": -1
         }
+        print(job_metadata)
         return job_metadata
 
     def get_job_result(self, job_id: str) -> Tuple[str, Any]:
