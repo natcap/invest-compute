@@ -31,10 +31,15 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(data['type'], 'process')  # according to the OGC standard this should always be 'process'
         self.assertEqual(data['status'], 'successful')
         self.assertEqual(response.headers['Location'], f'http://localhost:5000/jobs/{data["job_id"]}')
-        print('query job status:')
-        response = self.client.get(f'/jobs/{data["job_id"]}')
-        print(response.headers)
-        print(json.loads(response.get_data(as_text=True)))
+
+        response = json.loads(self.client.get(
+            f'/jobs/{data["job_id"]}').get_data(as_text=True))
+        self.assertEqual(payload['status'], 'successful')
+
+        response = json.loads(self.client.get(
+            f'/jobs/{data["job_id"]}/results?f=json').get_data(as_text=True)
+        print(response)
+
 
         # self.assertEqual(
         #     set(os.listdir(data['workspace'])),
