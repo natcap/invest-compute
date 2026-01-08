@@ -1,5 +1,7 @@
 import json
 import os.path
+import shutil
+import tempfile
 import unittest
 
 from pygeoapi import flask_app
@@ -10,9 +12,11 @@ class PyGeoAPIServerTests(unittest.TestCase):
     def setUp(self):
         self.client = flask_app.APP.test_client()
         self.datastack_url = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_datastack.tgz'
+        self.workspace_dir = tempfile.mkdtemp()
 
     def tearDown(self):
-        pass
+        shutil.rmtree(self.workspace_dir)
+
 
     # def testExecuteProcessMetadata(self):
     #     response = self.client.get(f'/processes/execute')
@@ -40,11 +44,14 @@ class PyGeoAPIServerTests(unittest.TestCase):
             f'/jobs/{data["job_id"]}/results?f=json').get_data(as_text=True))
         print(response)
 
-
-        # self.assertEqual(
-        #     set(os.listdir(data['workspace'])),
-        #     {'stdout.log', 'stderr.log', 'script.slurm', 'carbon_workspace'}
-        # )
+        bucket_gs_url = response['results']
+        local_dest_path = os.path.join(self.workspace_dir, 'results')
+        subprocess.run([
+            'gcloud', 'storage', 'cp', '--recursive', bucket_gs_url, local_dest_path])
+        self.assertEqual(
+            set(os.listdir(local_dest_path)),
+            {'stdout.log', 'stderr.log', 'script.slurm', 'carbon_workspace'}
+        )
         # curl -X POST -H "Content-Type: application/json" -d '{"inputs": {"datastack_url": "https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_datastack.tgz"}}' localhost:5000/processes/execute/execution
 
     # def testExecuteProcessExecutionAsync(self):

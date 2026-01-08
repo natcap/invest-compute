@@ -2,6 +2,7 @@ import json
 import logging
 from multiprocessing import dummy
 import os
+from pathlib import Path
 import subprocess
 import tempfile
 import textwrap
@@ -497,11 +498,12 @@ class SlurmManager(BaseManager):
         with open(script_path) as fp:
             LOGGER.debug(fp.read())
 
-        bucket_url = BUCKET.blob(workspace_dir).public_url
+        bucket_url = BUCKET.blob(Path(workspace_dir).name).public_url
         print(bucket_url)
+        bucket_gs_url = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
         results_json_path = os.path.join(workspace_dir, 'results.json')
         with open(results_json_path, 'w') as fp:
-            fp.write(json.dumps({'results': bucket_url}))
+            fp.write(json.dumps({'results': bucket_gs_url}))
 
         job_metadata = json.dumps({
             'workdir': workspace_dir,
