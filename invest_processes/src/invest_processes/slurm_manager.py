@@ -188,6 +188,7 @@ class SlurmManager(BaseManager):
             "type": "process",
             "identifier": job_id,
             "process_id": self.get_job_metadata(job_id)['process_id'],
+            "location": self.get_job_metadata(job_id)['results_path'],
             "created": self.get_job_submit_time(job_id),
             "started": self.get_job_start_time(job_id),
             "finished": self.get_job_end_time(job_id),
@@ -212,7 +213,16 @@ class SlurmManager(BaseManager):
                                          be returned
         :returns: `tuple` of mimetype and raw output
         """
-        raise NotImplementedError()
+        job_metadata = self.get_job_metadata(job_id)
+
+        if job_metadata['status'] != JobStatus.successful.value:
+            LOGGER.info("JOBMANAGER - job not finished or failed")
+            return (None,)
+
+        with open(job_metadata["location"], "r") as file:
+            data = json.load(file)
+
+        return job_metadata["mimetype"], data
 
 
     def delete_job(self, job_id: str) -> bool:
@@ -494,8 +504,14 @@ class SlurmManager(BaseManager):
         with open(script_path) as fp:
             LOGGER.debug(fp.read())
 
+        target_bucket_path = f'gs://{BUCKET_NAME}/{workspace_dir}'
+        results_json_path = os.path.join(workspace_dir, 'results.json')
+        with open(results_json_path, 'w') as fp:
+            fp.write(json.dumps({'results': target_bucket_path}))
+
         job_metadata = json.dumps({
             'workdir': workspace_dir,
+            'results_path': results_json_path,
             'process_id': processor.metadata['id']
         })
         print(job_metadata)
