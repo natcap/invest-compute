@@ -47,6 +47,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
 
         bucket_gs_url = response['results']
         local_dest_path = os.path.join(self.workspace_dir, 'results')
+        os.mkdir(local_dest_path)
         result = subprocess.run([
             'gcloud', 'storage', 'cp', '--recursive', bucket_gs_url, local_dest_path
         ], capture_output=True, text=True, check=True)
