@@ -23,10 +23,11 @@ from pygeoapi.util import (
 
 LOGGER = logging.getLogger(__name__)
 BUCKET_NAME = 'invest-compute-workspaces'
+STORAGE_CLIENT = storage.Client()
+BUCKET = storage_client.bucket(bucket_name)
 
-
-def upload_directory_to_bucket(dir_path, bucket_name):
-    """Upload everything in a given directory to a GCP bucket.
+def upload_directory_to_bucket(dir_path):
+    """Upload everything in a given directory to the GCP bucket.
 
     Args:
         dir_path (str): path to the directory to be uploaded
@@ -35,9 +36,6 @@ def upload_directory_to_bucket(dir_path, bucket_name):
     Returns:
         None
     """
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(bucket_name)
-
     # get the parent directory of dir_path
     parent_dir = os.path.split(os.path.normpath(dir_path))[0]
 
@@ -49,7 +47,7 @@ def upload_directory_to_bucket(dir_path, bucket_name):
             # relative path starting from the given directory
             rel_path = os.path.relpath(abs_path, start=parent_dir)
 
-            blob = bucket.blob(rel_path)
+            blob = BUCKET.blob(rel_path)
             blob.upload_from_filename(abs_path)
             LOGGER.debug(f'Uploaded {abs_path} to gs://{bucket_name}/{rel_path}')
 
@@ -367,7 +365,7 @@ class SlurmManager(BaseManager):
             # Upload the workspace even if something went wrong, so that the
             # user can access the slurm related files and any partial results.
             LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
-            upload_directory_to_bucket(workspace_dir, BUCKET_NAME)
+            upload_directory_to_bucket(workspace_dir)
 
 
     def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
@@ -499,7 +497,7 @@ class SlurmManager(BaseManager):
         with open(script_path) as fp:
             LOGGER.debug(fp.read())
 
-        bucket_url = storage_client.bucket(bucket_name).blob(workspace_dir).public_url
+        bucket_url = BUCKET.blob(workspace_dir).public_url
         print(bucket_url)
         results_json_path = os.path.join(workspace_dir, 'results.json')
         with open(results_json_path, 'w') as fp:
