@@ -157,7 +157,6 @@ class SlurmManager(BaseManager):
             result = subprocess.run(
                 sacct_command, capture_output=True, text=True, check=True
             ).stdout.strip()
-            print('result:', result)
             if result:
                 return result
             time.sleep(1)
