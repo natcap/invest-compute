@@ -152,7 +152,7 @@ class SlurmManager(BaseManager):
             sacct_command = [
                 'sacct', '--noheader', '-X',
                 '-j', job_id,
-                '-o', f'JobID,{field_name}']
+                '-o', field_name]
             LOGGER.debug('Calling sacct: ' + str(sacct_command))
             result = subprocess.run(
                 sacct_command, capture_output=True, text=True, check=True
