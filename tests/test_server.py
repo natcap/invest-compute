@@ -35,10 +35,10 @@ class PyGeoAPIServerTests(unittest.TestCase):
         # in sync mode with default response type ("raw"), the process
         # outputs should be returned directly in the json response
         self.assertEqual(set(data.keys()), {'workspace_url'})
-        self.assertEqual(response.headers['Location'], f'http://localhost:5000/jobs/{data["job_id"]}')
+        # self.assertEqual(response.headers['Location'], f'http://localhost:5000/jobs/{data["job_id"]}')
 
         response = json.loads(self.client.get(
-            f'/jobs/{data["job_id"]}').get_data(as_text=True))
+           response.headers['Location'].split('http://localhost:5000')[1]).get_data(as_text=True))
         self.assertEqual(response['status'], 'successful')
 
         results_endpoint_response = json.loads(self.client.get(
