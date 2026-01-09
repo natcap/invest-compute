@@ -154,7 +154,7 @@ class SlurmManager(BaseManager):
             sacct_command, capture_output=True, text=True, check=True)
         LOGGER.debug('stdout: ' + str(result.stdout))
         LOGGER.debug('stderr: ' + str(result.stderr))
-        return results.stdout.strip()
+        return result.stdout.strip()
 
     def get_job_metadata(self, job_id):
         """
