@@ -27,15 +27,14 @@ class PyGeoAPIServerTests(unittest.TestCase):
         response = self.client.post('/processes/execute/execution', json={
             'inputs': {
                 'datastack_url': self.datastack_url
-            },
-            'response': 'raw'
+            }
         })
         print(response.headers)
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.get_data(as_text=True))
-        self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
-        self.assertEqual(data['type'], 'process')  # according to the OGC standard this should always be 'process'
-        self.assertEqual(data['status'], 'successful')
+        # in sync mode with default response type ("raw"), the process
+        # outputs should be returned directly in the json response
+        self.assertEqual(set(data.keys()), {'workspace_url'})
         self.assertEqual(response.headers['Location'], f'http://localhost:5000/jobs/{data["job_id"]}')
 
         response = json.loads(self.client.get(
@@ -44,7 +43,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
 
         response = json.loads(self.client.get(
             f'/jobs/{data["job_id"]}/results?f=json').get_data(as_text=True))
-        print('raw response:', response)
+        print('response from results endpoint:', response)
 
 
         local_dest_path = os.path.join(self.workspace_dir, 'results')
