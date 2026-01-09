@@ -152,8 +152,8 @@ class SlurmManager(BaseManager):
         LOGGER.debug('Calling sacct: ' + str(sacct_command))
         result = subprocess.run(
             sacct_command, capture_output=True, text=True, check=True)
-        LOGGER.debug('stdout:', result.stdout)
-        LOGGER.debug('stderr:', result.stderr)
+        LOGGER.debug('stdout: ' + str(result.stdout))
+        LOGGER.debug('stderr: ' + str(result.stderr))
         return results.stdout.strip()
 
     def get_job_metadata(self, job_id):
