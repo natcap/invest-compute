@@ -145,29 +145,23 @@ class SlurmManager(BaseManager):
         return status_map[status]
 
     def get_sacct_data(self, job_id, field_name):
-        for i in range(10):
+
+        # it can take some time for job data to be available in the database
+        n_retries = 30
+        for i in range(n_retries):
             sacct_command = [
                 'sacct',
-                # '-j', job_id,
+                '-j', job_id,
                 '-o', f'JobID,{field_name}']
             LOGGER.debug('Calling sacct: ' + str(sacct_command))
             result = subprocess.run(
-                sacct_command, capture_output=True, text=True, check=True)
-            LOGGER.debug('stdout: ' + str(result.stdout))
-            LOGGER.debug('stderr: ' + str(result.stderr))
+                sacct_command, capture_output=True, text=True, check=True
+            ).stdout.strip()
+            if result:
+                return result
             time.sleep(1)
-
-        sacct_command = [
-            'sacct', '--noheader', '-X',
-            '-j', job_id,
-            '-o', field_name]
-        LOGGER.debug('Calling sacct: ' + str(sacct_command))
-        result = subprocess.run(
-            sacct_command, capture_output=True, text=True, check=True)
-        LOGGER.debug('stdout: ' + str(result.stdout))
-        LOGGER.debug('stderr: ' + str(result.stderr))
-
-        return result.stdout.strip()
+        raise ValueError(
+            f'sacct returned no results for job {job_id} after {n_retries} retries')
 
     def get_job_metadata(self, job_id):
         """
