@@ -42,7 +42,13 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(response['status'], 'successful')
 
         response = json.loads(self.client.get(
-            f'/jobs/{data["job_id"]}/results?f=json').get_data(as_text=True))
+            f'/jobs/{data["job_id"]}/results?f=json&response=raw').get_data(as_text=True))
+        print('raw response:', response)
+
+        response = json.loads(self.client.get(
+            f'/jobs/{data["job_id"]}/results?f=json&response=document').get_data(as_text=True))
+        print('document response:', response)
+
         local_dest_path = os.path.join(self.workspace_dir, 'results')
         os.mkdir(local_dest_path)
         subprocess.run([
