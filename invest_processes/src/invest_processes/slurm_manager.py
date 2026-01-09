@@ -146,17 +146,18 @@ class SlurmManager(BaseManager):
 
     def get_sacct_data(self, job_id, field_name):
 
-        # it can take some time for job data to be available in the database
+        # it can take some time for data to be available after job submission
         n_retries = 30
         for i in range(n_retries):
             sacct_command = [
-                'sacct',
+                'sacct', '--noheader', '-X',
                 '-j', job_id,
                 '-o', f'JobID,{field_name}']
             LOGGER.debug('Calling sacct: ' + str(sacct_command))
             result = subprocess.run(
                 sacct_command, capture_output=True, text=True, check=True
             ).stdout.strip()
+            print('result:', result)
             if result:
                 return result
             time.sleep(1)
