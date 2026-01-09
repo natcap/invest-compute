@@ -69,22 +69,24 @@ class PyGeoAPIServerTests(unittest.TestCase):
         print(response.headers)
         self.assertEqual(response.status_code, 201)
         data = json.loads(response.get_data(as_text=True))
-        self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
+        # pygeoapi incorrectly calls this key 'id' instead of 'job_id'
+        # https://github.com/geopython/pygeoapi/issues/2197
+        self.assertEqual(set(data.keys()), {'status', 'type', 'id'})
         self.assertEqual(data['status'], 'accepted')
         self.assertEqual(data['type'], 'process')  # according to the OGC standard this should always be 'process'
-        self.assertEqual(response.headers['Location'], f'http://localhost:5000/jobs/{data["job_id"]}')
+        self.assertEqual(response.headers['Location'], f'http://localhost:5000/jobs/{data["id"]}')
 
         # poll status until the job finishes
         while True:
             response = json.loads(self.client.get(
-                f'/jobs/{data["job_id"]}').get_data(as_text=True))
+                f'/jobs/{data["id"]}').get_data(as_text=True))
             print('status:', response['status'])
             self.assertNotIn(response['status'], {'failed', 'dismissed'})
             if response['status'] == 'successful':
                 break
 
         response = json.loads(self.client.get(
-            f'/jobs/{data["job_id"]}/results?f=json').get_data(as_text=True))
+            f'/jobs/{data["id"]}/results?f=json').get_data(as_text=True))
         local_dest_path = os.path.join(self.workspace_dir, 'results')
         os.mkdir(local_dest_path)
         subprocess.run([
