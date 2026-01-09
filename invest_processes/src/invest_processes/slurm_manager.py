@@ -145,11 +145,16 @@ class SlurmManager(BaseManager):
         return status_map[status]
 
     def get_sacct_data(self, job_id, field_name):
-        return subprocess.run([
+        sacct_command = [
             'sacct', '--noheader', '-X',
             '-j', job_id,
-            '-o', field_name
-        ], capture_output=True, text=True, check=True).stdout.strip()
+            '-o', field_name]
+        LOGGER.debug('Calling sacct:', sacct_command)
+        result = subprocess.run(
+            sacct_command, capture_output=True, text=True, check=True)
+        LOGGER.debug('stdout:', result.stdout)
+        LOGGER.debug('stderr:', result.stderr)
+        return results.stdout.strip()
 
     def get_job_metadata(self, job_id):
         """
