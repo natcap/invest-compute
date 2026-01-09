@@ -352,8 +352,8 @@ class SlurmManager(BaseManager):
             if exit_code != 0:
                 LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
 
-            outputs = process_output_func(workspace_dir)
-            outputs['workspace'] = workspace_dir
+            # process outputs, should update results.json in the workspace
+            process_output_func(workspace_dir)
 
         except Exception as err:
             # TODO assess correct exception type and description to help users
@@ -419,11 +419,11 @@ class SlurmManager(BaseManager):
         monitor_thread.join()
 
         final_status = self.get_job_status(job_id)
-        outputs = {
-            'job_id': job_id,
-            'status': final_status.value,
-            'type': 'process'
-        }
+
+        with open(os.path.join(workspace_dir, 'results.json')) as results_file:
+            outputs = json.load(results_file)
+            print('json outputs:', outputs)
+
         if requested_response == RequestedResponse.document.value:
             outputs = {
                 'outputs': [outputs]
@@ -513,7 +513,7 @@ class SlurmManager(BaseManager):
         bucket_gs_url = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
         results_json_path = os.path.join(workspace_dir, 'results.json')
         with open(results_json_path, 'w') as fp:
-            fp.write(json.dumps({'results': bucket_gs_url}))
+            fp.write(json.dumps({'workspace_url': bucket_gs_url}))
 
         job_metadata = json.dumps({
             'workdir': workspace_dir,

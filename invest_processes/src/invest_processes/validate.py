@@ -146,63 +146,19 @@ class ValidateProcessor(BaseProcessor):
         LOGGER.debug(content)
         json_output = json.loads(content)
 
-        result = {'validation_results': []}
+        with open(os.path.join(workspace_dir, 'results.json')) as file:
+            results = json.load(file)
+
+        # add validation messages to the results json file
+        results['validation_results'] = []
         for (input_ids, error_message) in json_output['validation_results']:
             result['validation_results'].append({
                 'input_ids': input_ids,
                 'error_message': error_message
             })
-        return result
+        with open(os.path.join(workspace_dir, 'results.json'), 'w') as file:
+            json.dump(results, file)
 
-    def execute(self, data, outputs=None):
-        """Execute the process.
-
-        Args:
-            data: dictionary of data inputs
-            outputs:
-
-        Returns:
-            Tuple of (mimetype, outputs)
-        """
-        # Extract model ID and parameters from the datastack file
-        try:
-            parameter_set = datastack.extract_parameter_set(
-                data.get('datastack_path'))
-        except Exception as error:
-            raise ProcessorExecuteError(
-                1, 'Error when parsing JSON datastack:\n    ' + str(error))
-
-        # Import the model
-        try:
-            model_module = models.pyname_to_module[
-                models.model_id_to_pyname[parameter_set.model_id]]
-        except KeyError as ex:
-            raise ValueError(f'model ID {parameter_set.model_id} not found')
-
-        LOGGER.log(
-            datastack.ARGS_LOG_LEVEL,
-            'Validating parameters: \n' +
-            datastack.format_args_dict(
-                parameter_set.args,
-                parameter_set.model_id))
-
-        try:
-            validation_errors = model_module.validate(parameter_set.args)
-        except Exception as ex:
-            LOGGER.error(
-                f'An error occurred during validation: {ex}', exc_info=ex)
-            raise ProcessorExecuteError(
-                'An error occurred during validation. See the log file in '
-                'the workspace for details. \n Workspace: ' + workspace_dir)
-
-        outputs = {'validation_errors': []}
-        for (input_ids, error_message) in validation_errors:
-            outputs['validation_errors'].append({
-                'input_ids': input_ids,
-                'error_message': error_message
-            })
-
-        return 'application/json', outputs
 
     def __repr__(self):
         return f'<InVESTValidateProcessor> {self.name}'
