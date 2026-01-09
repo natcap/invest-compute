@@ -37,12 +37,12 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(set(data.keys()), {'workspace_url'})
         # self.assertEqual(response.headers['Location'], f'http://localhost:5000/jobs/{data["job_id"]}')
 
-        response = json.loads(self.client.get(
-           response.headers['Location'].split('http://localhost:5000')[1]).get_data(as_text=True))
+        job_url = response.headers['Location'].split('http://localhost:5000')[1]
+        response = json.loads(self.client.get(job_url).get_data(as_text=True))
         self.assertEqual(response['status'], 'successful')
 
         results_endpoint_response = json.loads(self.client.get(
-            f'/jobs/{data["job_id"]}/results?f=json').get_data(as_text=True))
+            f'{job_url}/results?f=json').get_data(as_text=True))
         print('response from results endpoint:', response)
 
         self.assertEqual(data, results_endpoint_response)
