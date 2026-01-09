@@ -41,9 +41,11 @@ class PyGeoAPIServerTests(unittest.TestCase):
             f'/jobs/{data["job_id"]}').get_data(as_text=True))
         self.assertEqual(response['status'], 'successful')
 
-        response = json.loads(self.client.get(
+        results_endpoint_response = json.loads(self.client.get(
             f'/jobs/{data["job_id"]}/results?f=json').get_data(as_text=True))
         print('response from results endpoint:', response)
+
+        self.assertEqual(data, results_endpoint_response)
 
 
         local_dest_path = os.path.join(self.workspace_dir, 'results')
