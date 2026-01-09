@@ -273,7 +273,7 @@ class SlurmManager(BaseManager):
                   response
         """
         processor = self.get_processor(process_id)
-
+        print('requested response:', requested_response)
         if execution_mode == RequestedProcessExecutionMode.respond_async:
             job_control_options = processor.metadata.get(
                 'jobControlOptions', [])
