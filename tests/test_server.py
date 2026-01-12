@@ -149,41 +149,41 @@ class PyGeoAPIServerTests(unittest.TestCase):
     #             'RuntimeError: does_not_exist.tif: No such file or directory',
     #             err_log.read())
 
-    # def testValidateProcessMetadata(self):
-    #     response = self.client.get(f'/processes/validate')
-    #     self.assertEqual(response.status_code, 200)
+    def testValidateProcessMetadata(self):
+        response = self.client.get(f'/processes/validate')
+        self.assertEqual(response.status_code, 200)
 
-    # def testValidateProcessExecutionSync(self):
-    #     """Validation of a datastack should return validation messages"""
-    #     response = self.client.post(f'/processes/validate/execution', json={
-    #         'inputs': {
-    #             'datastack_url': self.datastack_url
-    #         }
-    #     })
-    #     self.assertEqual(response.status_code, 200)
-    #     data = json.loads(response.get_data(as_text=True))
-    #     self.assertEqual(set(data.keys()), {'workspace_url', 'validation_results'})
-    #     self.assertEqual(
-    #         data['validation_results'],
-    #         [{
-    #             'input_ids': ['workspace_dir'],
-    #             'error_message': 'Key is missing from the args dict'
-    #         }]
-    #     )
+    def testValidateProcessExecutionSync(self):
+        """Validation of a datastack should return validation messages"""
+        response = self.client.post(f'/processes/validate/execution', json={
+            'inputs': {
+                'datastack_url': self.datastack_url
+            }
+        })
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.get_data(as_text=True))
+        self.assertEqual(set(data.keys()), {'workspace_url', 'validation_results'})
+        self.assertEqual(
+            data['validation_results'],
+            [{
+                'input_ids': ['workspace_dir'],
+                'error_message': 'Key is missing from the args dict'
+            }]
+        )
 
-    #     local_dest_path = os.path.join(self.workspace_dir, 'results')
-    #     os.mkdir(local_dest_path)
-    #     subprocess.run([
-    #         'gcloud', 'storage', 'cp', '--recursive', f'{data["workspace_url"]}/*', local_dest_path
-    #     ], check=True)
-    #     self.assertEqual(
-    #         set(os.listdir(local_dest_path)),
-    #         {
-    #             'datastack.tgz',     # datastack archive downloaded from the input url
-    #             'datastack',         # extracted datastack directory
-    #             'stdout.log',        # stdout from the slurm job
-    #             'stderr.log',        # stderr from the slurm job
-    #             'script.slurm',      # the slurm script sent to sbatch
-    #             'results.json'       # json results file used by pygeoapi
-    #         }
-    #     )
+        local_dest_path = os.path.join(self.workspace_dir, 'results')
+        os.mkdir(local_dest_path)
+        subprocess.run([
+            'gcloud', 'storage', 'cp', '--recursive', f'{data["workspace_url"]}/*', local_dest_path
+        ], check=True)
+        self.assertEqual(
+            set(os.listdir(local_dest_path)),
+            {
+                'datastack.tgz',     # datastack archive downloaded from the input url
+                'datastack',         # extracted datastack directory
+                'stdout.log',        # stdout from the slurm job
+                'stderr.log',        # stderr from the slurm job
+                'script.slurm',      # the slurm script sent to sbatch
+                'results.json'       # json results file used by pygeoapi
+            }
+        )
