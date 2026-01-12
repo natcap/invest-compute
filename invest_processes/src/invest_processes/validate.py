@@ -152,7 +152,7 @@ class ValidateProcessor(BaseProcessor):
         # add validation messages to the results json file
         results['validation_results'] = []
         for (input_ids, error_message) in json_output['validation_results']:
-            result['validation_results'].append({
+            results['validation_results'].append({
                 'input_ids': input_ids,
                 'error_message': error_message
             })

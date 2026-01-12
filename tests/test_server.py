@@ -50,7 +50,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         os.mkdir(local_dest_path)
         subprocess.run([
             'gcloud', 'storage', 'cp', '--recursive',
-            f'{data["workspace_url"]}/*', local_dest_path
+            f'{execution_response["workspace_url"]}/*', local_dest_path
         ], check=True)
         self.assertEqual(
             set(os.listdir(local_dest_path)),
