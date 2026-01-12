@@ -374,6 +374,7 @@ class SlurmManager(BaseManager):
             LOGGER.exception(err)
 
         finally:
+            print('finally')
             # Upload the workspace even if something went wrong, so that the
             # user can access the slurm related files and any partial results.
             LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
@@ -416,10 +417,13 @@ class SlurmManager(BaseManager):
         monitor_thread = threading.Thread(
             target=self.monitor_job_status,
             args=(job_id, workspace_dir, processor.process_output))
+        print('start thread')
         monitor_thread.start()
+        pribnt('join thread')
         monitor_thread.join()
-
+        print('get final status')
         final_status = self.get_job_status(job_id)
+        print(final_status)
 
         with open(os.path.join(workspace_dir, 'results.json')) as results_file:
             outputs = json.load(results_file)
