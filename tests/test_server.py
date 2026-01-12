@@ -87,14 +87,14 @@ class PyGeoAPIServerTests(unittest.TestCase):
         # TODO: test with a longer running job
         while True:
             job_response = json.loads(self.client.get(
-                f'/jobs/{data["id"]}').get_data(as_text=True))
+                f'/jobs/{execution_response["id"]}').get_data(as_text=True))
             print('status:', job_response['status'])
             self.assertNotIn(job_response['status'], {'failed', 'dismissed'})
             if response['status'] == 'successful':
                 break
 
         results_response = json.loads(self.client.get(
-            f'/jobs/{data["id"]}/results?f=json').get_data(as_text=True))
+            f'/jobs/{execution_response["id"]}/results?f=json').get_data(as_text=True))
         print('results response:', results_response)
         local_dest_path = os.path.join(self.workspace_dir, 'results')
         os.mkdir(local_dest_path)
