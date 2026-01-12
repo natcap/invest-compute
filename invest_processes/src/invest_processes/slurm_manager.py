@@ -419,7 +419,7 @@ class SlurmManager(BaseManager):
             args=(job_id, workspace_dir, processor.process_output))
         print('start thread')
         monitor_thread.start()
-        pribnt('join thread')
+        print('join thread')
         monitor_thread.join()
         print('get final status')
         final_status = self.get_job_status(job_id)
