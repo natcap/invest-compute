@@ -18,9 +18,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.workspace_dir)
 
-    # def testExecuteProcessMetadata(self):
-    #     response = self.client.get(f'/processes/execute')
-    #     self.assertEqual(response.status_code, 200)
+    def testExecuteProcessMetadata(self):
+        response = self.client.get(f'/processes/execute')
+        self.assertEqual(response.status_code, 200)
 
     def testExecuteProcessExecutionSync(self):
         """Test execution of the 'execute' process in sync mode."""
