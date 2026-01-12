@@ -356,6 +356,7 @@ class SlurmManager(BaseManager):
             process_output_func(workspace_dir)
 
         except Exception as err:
+            print('caught error', err)
             # TODO assess correct exception type and description to help users
             # NOTE, the /results endpoint should return the error HTTP status
             # for jobs that failed, the specification says that failing jobs
