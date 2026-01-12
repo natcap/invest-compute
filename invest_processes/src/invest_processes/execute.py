@@ -97,8 +97,6 @@ class ExecuteProcessor(BaseProcessor):
             raise ProcessorExecuteError(
                 1, f'Failed to extract datastack archive:\n{str(err)}')
 
-        print(os.listdir(workspace_dir))
-        print(os.listdir(extracted_datastack_dir))
         # Parse the extracted datastack JSON
         json_path = os.path.join(extracted_datastack_dir, 'parameters.invest.json')
         try:
