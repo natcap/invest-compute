@@ -146,7 +146,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         )
 
         # expect model error to be captured in stderr.log
-        with open(os.path.join(data['workspace'], 'stderr.log')) as err_log:
+        with open(os.path.join(local_dest_path, 'stderr.log')) as err_log:
             self.assertIn(
                 'RuntimeError: does_not_exist.tif: No such file or directory',
                 err_log.read())
