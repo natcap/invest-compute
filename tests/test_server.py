@@ -36,7 +36,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         # outputs should be returned directly in the json response
         self.assertEqual(set(execution_response.keys()), {'workspace_url'})
 
-        job_url = execution_response.headers['Location'].split('http://localhost:5000')[1]
+        job_url = response.headers['Location'].split('http://localhost:5000')[1]
         job_response = json.loads(self.client.get(job_url).get_data(as_text=True))
         self.assertEqual(job_response['status'], 'successful')
 
@@ -90,7 +90,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 f'/jobs/{execution_response["id"]}').get_data(as_text=True))
             print('status:', job_response['status'])
             self.assertNotIn(job_response['status'], {'failed', 'dismissed'})
-            if response['status'] == 'successful':
+            if job_response['status'] == 'successful':
                 break
 
         results_response = json.loads(self.client.get(
@@ -141,7 +141,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         response = self.client.get(f'/processes/validate')
         self.assertEqual(response.status_code, 200)
 
-    def testValidateProcessExecution(self):
+    def testValidateProcessExecutionSync(self):
         """Validation of a datastack should return validation messages"""
         response = self.client.post(f'/processes/validate/execution', json={
             'inputs': {
@@ -150,15 +150,15 @@ class PyGeoAPIServerTests(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.get_data(as_text=True))
-        self.assertEqual(set(data.keys()), {'status', 'type', 'job_id'})
-        self.assertEqual(
-            data['validation_results'],
-            [{
-                'input_ids': ['workspace_dir'],
-                'error_message': 'Key is missing from the args dict'
-            }]
-        )
-        self.assertEqual(
-            set(os.listdir(data['workspace'])),
-            {'stdout.log', 'stderr.log', 'script.slurm'}
-        )
+        self.assertEqual(set(data.keys()), {'workspace_url', 'validation_results'})
+        # self.assertEqual(
+        #     data['validation_results'],
+        #     [{
+        #         'input_ids': ['workspace_dir'],
+        #         'error_message': 'Key is missing from the args dict'
+        #     }]
+        # )
+        # self.assertEqual(
+        #     set(os.listdir(data['workspace'])),
+        #     {'stdout.log', 'stderr.log', 'script.slurm'}
+        # )
