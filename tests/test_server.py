@@ -3,6 +3,7 @@ import os.path
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 
 from pygeoapi import flask_app
@@ -109,6 +110,55 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'stderr.log',        # stderr from the slurm job
                 'script.slurm',      # the slurm script sent to sbatch
                 'carbon_workspace',  # the invest model workspace directory
+                'results.json'       # json results file used by pygeoapi
+            }
+        )
+
+    def testExecuteProcessExecutionSlowAsync(self):
+        """Test execution of the 'execute' process in async mode with a longer-running job."""
+        response = self.client.post(f'/processes/execute/execution',
+            json={'inputs': {'datastack_url': 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_scenic_quality_datastack.tgz'}},
+            headers={'Prefer': 'respond-async'})
+        print(response.headers)
+        self.assertEqual(response.status_code, 201)
+        execution_response = json.loads(response.get_data(as_text=True))
+        # pygeoapi incorrectly calls this key 'id' instead of 'job_id'
+        # https://github.com/geopython/pygeoapi/issues/2197
+        self.assertEqual(set(execution_response.keys()), {'status', 'type', 'id'})
+        self.assertEqual(execution_response['status'], 'accepted')
+        self.assertEqual(execution_response['type'], 'process')  # according to the OGC standard this should always be 'process'
+        self.assertEqual(
+            response.headers['Location'],
+            f'http://localhost:5000/jobs/{execution_response["id"]}')
+
+        # poll status until the job finishes
+        # TODO: test with a longer running job
+        while True:
+            job_response = json.loads(self.client.get(
+                f'/jobs/{execution_response["id"]}').get_data(as_text=True))
+            print('status:', job_response['status'])
+            self.assertNotIn(job_response['status'], {'failed', 'dismissed'})
+            if job_response['status'] == 'successful':
+                break
+            time.sleep(5)
+
+        results_response = json.loads(self.client.get(
+            f'/jobs/{execution_response["id"]}/results?f=json').get_data(as_text=True))
+        print('results response:', results_response)
+        local_dest_path = os.path.join(self.workspace_dir, 'results')
+        os.mkdir(local_dest_path)
+        subprocess.run([
+            'gcloud', 'storage', 'cp', '--recursive', f'{results_response["workspace_url"]}/*', local_dest_path
+        ], check=True)
+        self.assertEqual(
+            set(os.listdir(local_dest_path)),
+            {
+                'datastack.tgz',     # datastack archive downloaded from the input url
+                'datastack',         # extracted datastack directory
+                'stdout.log',        # stdout from the slurm job
+                'stderr.log',        # stderr from the slurm job
+                'script.slurm',      # the slurm script sent to sbatch
+                'scenic_quality_workspace',  # the invest model workspace directory
                 'results.json'       # json results file used by pygeoapi
             }
         )
