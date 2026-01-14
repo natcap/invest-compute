@@ -191,9 +191,16 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        # increase returned field width up to 1000 characters
-        # return json.loads(self.get_sacct_data(job_id, 'Comment%1000'))
-        return json.loads(self.get_scontrol_data(job_id, 'comment'))
+
+        print('result from fake job:', self.get_scontrol_data(1000, 'comment'))
+
+        comment = json.loads(self.get_scontrol_data(job_id, 'comment'))
+        if not comment:
+            # increase returned field width up to 1000 characters
+            comment = json.loads(self.get_sacct_data(job_id, 'Comment%1000'))
+        if not comment:
+            raise ValueError('job comment not found by scontrol or sacct')
+        return comment
 
     def get_job_submit_time(self, job_id):
         return self.get_sacct_data(job_id, 'Submit')
