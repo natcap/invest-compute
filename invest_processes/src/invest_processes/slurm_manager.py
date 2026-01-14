@@ -224,11 +224,13 @@ class SlurmManager(BaseManager):
                                          be returned
         :returns: `tuple` of mimetype and raw output
         """
+        print('getting job result')
         job_metadata = self.get_job(job_id)
-        if job_metadata['status'] != JobStatus.successful.value:
-            return (None,)
+        # if job_metadata['status'] != JobStatus.successful.value:
+        #     return (None,)
         with open(job_metadata["location"], "r") as file:
             data = json.load(file)
+            print(data)
         return job_metadata["mimetype"], data
 
     def delete_job(self, job_id: str) -> bool:
@@ -338,9 +340,6 @@ class SlurmManager(BaseManager):
                 # check the 'state' string from the job data in sacct
                 status = self.get_job_status(job_id)
                 LOGGER.debug(f'Status of slurm job {job_id}: {status}')
-
-                # TODO: make this more resilient to other possible job states
-                if status in {JobStatus.successful, JobStatus.failed, JobStatus.dismissed}:
                     break
 
             # get the exit code from the job data in sacct
