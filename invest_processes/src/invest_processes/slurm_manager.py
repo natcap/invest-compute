@@ -152,7 +152,7 @@ class SlurmManager(BaseManager):
         return status_map[status]
 
     def get_scontrol_data(self, job_id, field_name):
-        scontrol_command = ['scontrol', '--json', 'show', 'job', job_id]
+        scontrol_command = ['scontrol', '--json', 'show', 'job', str(job_id)]
         LOGGER.debug('Calling scontrol: ' + str(scontrol_command))
         result = subprocess.run(
             scontrol_command, capture_output=True, text=True, check=True
