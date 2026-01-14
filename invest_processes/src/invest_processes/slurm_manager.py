@@ -156,7 +156,9 @@ class SlurmManager(BaseManager):
         LOGGER.debug('Calling scontrol: ' + str(scontrol_command))
         result = subprocess.run(
             scontrol_command, capture_output=True, text=True, check=True
-        ).stdout.strip()
+        )
+        print(result)
+        result = result.stdout.strip()
         print(result)
         result = json.loads(result)['jobs'][0][field_name]
         print(result)
