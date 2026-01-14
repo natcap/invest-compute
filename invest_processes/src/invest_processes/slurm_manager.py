@@ -151,6 +151,17 @@ class SlurmManager(BaseManager):
             return JobStatus.successful
         return status_map[status]
 
+    def get_scontrol_data(self, job_id, field_name):
+        scontrol_command = ['scontrol', '--json', 'show', 'job', job_id]
+        LOGGER.debug('Calling scontrol: ' + str(scontrol_command))
+        result = subprocess.run(
+            scontrol_command, capture_output=True, text=True, check=True
+        ).stdout.strip()
+        print(result)
+        result = json.loads(result)
+        print(result)
+        return result[field_name]
+
     def get_sacct_data(self, job_id, field_name):
 
         # it can take some time for data to be available after job submission
@@ -181,7 +192,8 @@ class SlurmManager(BaseManager):
         :returns: `dict` of job result
         """
         # increase returned field width up to 1000 characters
-        return json.loads(self.get_sacct_data(job_id, 'Comment%1000'))
+        # return json.loads(self.get_sacct_data(job_id, 'Comment%1000'))
+        return json.loads(self.get_scontrol_data(job_id, 'Comment'))
 
     def get_job_submit_time(self, job_id):
         return self.get_sacct_data(job_id, 'Submit')
