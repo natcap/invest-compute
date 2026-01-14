@@ -340,6 +340,7 @@ class SlurmManager(BaseManager):
                 # check the 'state' string from the job data in sacct
                 status = self.get_job_status(job_id)
                 LOGGER.debug(f'Status of slurm job {job_id}: {status}')
+                if status in {JobStatus.successful, JobStatus.failed, JobStatus.dismissed}:
                     break
 
             # get the exit code from the job data in sacct
