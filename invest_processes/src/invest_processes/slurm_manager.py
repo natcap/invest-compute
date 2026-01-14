@@ -142,6 +142,13 @@ class SlurmManager(BaseManager):
             'SUSPENDED': JobStatus.dismissed,   # allocated resources but execution suspended, such as from preemption or a direct request from an authorized user
             'TIMEOUT': JobStatus.failed         # terminated due to reaching the time limit, such as those configured in slurm.conf or specified for the individual job
         }
+
+        # return as if successful in case of failure so that error details
+        # can be returned. The user will need to check the logs to confirm
+        # whether the model actually succeeded or not.
+        # https://github.com/geopython/pygeoapi/issues/2203
+        if status_map[status] == JobStatus.failed:
+            return JobStatus.successful
         return status_map[status]
 
     def get_sacct_data(self, job_id, field_name):
