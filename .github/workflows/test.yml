@@ -140,6 +140,7 @@ jobs:
             python=3.13
             natcap.invest
             pytest
+            numpy<2.4.0
           condarc: |
             channels:
               - conda-forge
