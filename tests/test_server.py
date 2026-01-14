@@ -137,9 +137,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
             job_response = json.loads(self.client.get(
                 f'/jobs/{execution_response["id"]}').get_data(as_text=True))
             print('status:', job_response['status'])
-            self.assertNotIn(job_response['status'], {'failed', 'dismissed'})
-            if job_response['status'] == 'successful':
+            if job_response['status'] in {'successful', 'failed', 'dismissed'}:
                 break
+
             time.sleep(5)
 
         results_response = json.loads(self.client.get(
@@ -150,6 +150,10 @@ class PyGeoAPIServerTests(unittest.TestCase):
         subprocess.run([
             'gcloud', 'storage', 'cp', '--recursive', f'{results_response["workspace_url"]}/*', local_dest_path
         ], check=True)
+        with open(os.path.join(local_dest_path, 'stderr.log')) as f:
+            print(f.read())
+
+        self.assertNotIn(job_response['status'], {'failed', 'dismissed'})
         self.assertEqual(
             set(os.listdir(local_dest_path)),
             {
