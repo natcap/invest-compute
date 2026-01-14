@@ -158,9 +158,9 @@ class SlurmManager(BaseManager):
             scontrol_command, capture_output=True, text=True, check=True
         ).stdout.strip()
         print(result)
-        result = json.loads(result)
+        result = json.loads(result)['jobs'][0][field_name]
         print(result)
-        return result[field_name]
+        return result
 
     def get_sacct_data(self, job_id, field_name):
 
@@ -193,7 +193,7 @@ class SlurmManager(BaseManager):
         """
         # increase returned field width up to 1000 characters
         # return json.loads(self.get_sacct_data(job_id, 'Comment%1000'))
-        return json.loads(self.get_scontrol_data(job_id, 'Comment'))
+        return json.loads(self.get_scontrol_data(job_id, 'comment'))
 
     def get_job_submit_time(self, job_id):
         return self.get_sacct_data(job_id, 'Submit')
