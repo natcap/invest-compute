@@ -135,7 +135,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         while True:
             job_response = json.loads(self.client.get(
                 f'/jobs/{execution_response["id"]}').get_data(as_text=True))
-            print('status:', job_response['status'])
+            print('job response', job_response)
             if job_response['status'] in {'successful', 'failed', 'dismissed'}:
                 break
 
@@ -144,7 +144,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         results_response = json.loads(self.client.get(
             f'/jobs/{execution_response["id"]}/results?f=json').get_data(as_text=True))
         print('results response:', results_response)
-        with open(os.path.join(local_dest_path, 'stderr.log')) as f:
+        with open(os.path.join(job_response['workspace'], 'stderr.log')) as f:
             print(f.read())
 
         local_dest_path = os.path.join(self.workspace_dir, 'results')
