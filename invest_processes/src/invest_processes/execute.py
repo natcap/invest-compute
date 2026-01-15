@@ -1,11 +1,11 @@
 import importlib
 import logging
 import os
-import tarfile
 import tempfile
 import textwrap
 import time
 
+from invest_processes import utils
 from natcap.invest import datastack, models, spec, utils
 from pygeoapi.process.base import BaseProcessor, ProcessorExecuteError
 import requests
@@ -77,27 +77,11 @@ class ExecuteProcessor(BaseProcessor):
         Returns:
             string contents of the script
         """
-        # Download the datastack from the given URL and save to a local file
-        response = requests.get(datastack_url)
-        tgz_path = os.path.join(workspace_dir, 'datastack.tgz')
-        if response.status_code == 200:
-            with open(tgz_path, 'wb') as tgz:
-                tgz.write(response.content)
-        else:
-            raise ProcessorExecuteError(
-                "Failed to download datastack file. Request returned " +
-                {response.status_code})
-
-        # Extract the TGZ archive to a local directory
         extracted_datastack_dir = os.path.join(workspace_dir, 'datastack')
-        try:
-            with tarfile.open(tgz_path, 'r:gz') as tgz:
-                tgz.extractall(path=extracted_datastack_dir, filter='data')
-        except Exception as err:
-            raise ProcessorExecuteError(
-                1, f'Failed to extract datastack archive:\n{str(err)}')
+        utils.download_and_extract_datastack(datastack_url, extracted_datastack_dir)
 
-        # Parse the extracted datastack JSON
+        # Parse the extracted datastack JSON. Datastack archives created in the
+        # workbench should have the JSON file named parameters.invest.json.
         json_path = os.path.join(extracted_datastack_dir, 'parameters.invest.json')
         try:
             model_id = datastack.extract_parameter_set(json_path).model_id

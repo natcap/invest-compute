@@ -147,11 +147,21 @@ class SlurmManager(BaseManager):
         # can be returned. The user will need to check the logs to confirm
         # whether the model actually succeeded or not.
         # https://github.com/geopython/pygeoapi/issues/2203
-        if status_map[status] == JobStatus.failed:
+        if status_map[status] == JobStastus.failed:
             return JobStatus.successful
         return status_map[status]
 
     def get_scontrol_data(self, job_id, field_name):
+        """Get a slurm job data field value using the scontrol command.
+
+        Args:
+            job_id: id of the job to query
+            field_name: name of the data field to query
+
+        Returns:
+            string field value
+        """
+
         scontrol_command = ['scontrol', '--json', 'show', 'job', str(job_id)]
         LOGGER.debug('Calling scontrol: ' + str(scontrol_command))
         result = json.loads(subprocess.run(
@@ -162,27 +172,33 @@ class SlurmManager(BaseManager):
         return result['jobs'][0][field_name]
 
     def get_sacct_data(self, job_id, field_name):
+        """Get a slurm job data field value using the sacct command.
 
-        # it can take some time for data to be available after job submission
-        n_retries = 30
-        for i in range(n_retries):
-            sacct_command = [
-                'sacct', '--noheader', '-X',
-                '-j', job_id,
-                '-o', field_name]
-            LOGGER.debug('Calling sacct: ' + str(sacct_command))
-            result = subprocess.run(
-                sacct_command, capture_output=True, text=True, check=True
-            ).stdout.strip()
-            if result:
-                return result
-            time.sleep(1)
-        raise ValueError(
-            f'sacct returned no results for job {job_id} after {n_retries} retries')
+        Args:
+            job_id: id of the job to query
+            field_name: name of the data field to query
+
+        Returns:
+            string field value
+        """
+        sacct_command = [
+            'sacct', '--noheader', '-X',
+            '-j', job_id,
+            '-o', field_name]
+        LOGGER.debug('Calling sacct: ' + str(sacct_command))
+        result = subprocess.run(
+            sacct_command, capture_output=True, text=True, check=True
+        ).stdout.strip()
+        return result
 
     def get_job_metadata(self, job_id):
         """
         Get a job's metadata as stored in the slurm job comment.
+
+        Unlike other job data, the 'comment' field doesn't seem to be added to
+        the database until the job finishes. So we first try `scontrol`, which
+        can only return data for jobs that are running, and if that fails we try
+        `sacct`, which has the data for jobs that have finished.
 
         :param job_id: job identifier
 
@@ -190,6 +206,7 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
+
         comment = json.loads(self.get_scontrol_data(job_id, 'comment'))
         if not comment:
             # increase returned field width up to 1000 characters
