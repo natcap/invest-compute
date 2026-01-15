@@ -49,10 +49,10 @@ jobs:
 
       #############################################################
       # This section copied from koesterlab/setup-slurm-action@v1
-      # their action does not allow modification of slurm conf vars
+      # their action does not allow modification of slurm conf vars, and we
+      # need to configure `AccountingStoreFlags: job_comment` so that job
+      # comments are stored in the database.
       #
-      # prior to slurm-setup we need the podmand-correct command
-      # see https://github.com/containers/podman/issues/13338
       - name: Download slurm ansible roles
         shell: bash -e {0}
         run: |
@@ -125,7 +125,7 @@ jobs:
         run: |
           ansible-playbook slurm-playbook.yml || (journalctl -xe && exit 1)
 
-      - name: Add Slurm Account
+      - name: Add slurm account
         shell: bash -e {0}
         run: |
           sudo retry --times=24 --delay=5 --until=success -- sacctmgr -i create account "Name=runner"
@@ -140,7 +140,7 @@ jobs:
             python=3.13
             natcap.invest
             pytest
-            numpy<2.4.0
+            numpy<2.4.0  # https://github.com/natcap/invest/issues/2288
           condarc: |
             channels:
               - conda-forge
@@ -163,4 +163,4 @@ jobs:
           export PYGEOAPI_CONFIG=invest_processes/pygeoapi-config.yml
           export PYGEOAPI_OPENAPI=invest_processes/openapi.yml
           pygeoapi openapi generate $PYGEOAPI_CONFIG --output-file $PYGEOAPI_OPENAPI
-          pytest -s -k SlowAsync --log-cli-level=DEBUG tests/
+          pytest -s --log-cli-level=DEBUG tests/
