@@ -1,7 +1,7 @@
 import os
 import tarfile
 
-from pygeoapi.process.base import BaseProcessor, ProcessorExecuteError
+from pygeoapi.process.base import ProcessorExecuteError
 import requests
 
 def download_and_extract_datastack(datastack_url, extracted_datastack_dir):
