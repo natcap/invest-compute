@@ -8,12 +8,14 @@ import unittest
 
 from pygeoapi import flask_app
 
+CARBON_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_datastack.tgz'
+SQ_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_scenic_quality_datastack.tgz'
+ERROR_DATASTACL_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_error_datastack.tgz'
 
 class PyGeoAPIServerTests(unittest.TestCase):
 
     def setUp(self):
         self.client = flask_app.APP.test_client()
-        self.datastack_url = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_datastack.tgz'
         self.workspace_dir = tempfile.mkdtemp()
 
     def tearDown(self):
@@ -69,8 +71,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
     def testExecuteProcessExecutionAsync(self):
         """Test execution of the 'execute' process in async mode."""
         response = self.client.post(f'/processes/execute/execution',
-            json={'inputs': {'datastack_url': self.datastack_url}},
-            headers={'Prefer': 'respond-async'})
+            json={'inputs': {'datastack_url': CARBON_DATASTACK_URL}},
+            # headers={'Prefer': 'respond-async'}
+        )
         print(response.headers)
         self.assertEqual(response.status_code, 201)
         execution_response = json.loads(response.get_data(as_text=True))
@@ -117,7 +120,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
     def testExecuteProcessExecutionSlowAsync(self):
         """Test execution of the 'execute' process in async mode with a longer-running job."""
         response = self.client.post(f'/processes/execute/execution',
-            json={'inputs': {'datastack_url': 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_scenic_quality_datastack.tgz'}},
+            json={'inputs': {'datastack_url': SQ_DATASTACK_URL}},
             headers={'Prefer': 'respond-async'})
         self.assertEqual(response.status_code, 201)
         execution_response = json.loads(response.get_data(as_text=True))
@@ -135,7 +138,6 @@ class PyGeoAPIServerTests(unittest.TestCase):
         while True:
             job_response = json.loads(self.client.get(
                 f'/jobs/{execution_response["id"]}').get_data(as_text=True))
-            print('job response', job_response)
             if job_response['status'] in {'successful', 'failed', 'dismissed'}:
                 break
 
@@ -143,20 +145,12 @@ class PyGeoAPIServerTests(unittest.TestCase):
 
         results_response = json.loads(self.client.get(
             f'/jobs/{execution_response["id"]}/results?f=json').get_data(as_text=True))
-        print('results response:', results_response)
 
         local_dest_path = os.path.join(self.workspace_dir, 'results')
         os.mkdir(local_dest_path)
         subprocess.run([
             'gcloud', 'storage', 'cp', '--recursive', f'{results_response["workspace_url"]}/*', local_dest_path
         ], check=True)
-        with open(os.path.join(local_dest_path, 'stdout.log')) as f:
-            print(f.read())
-
-        print('----------')
-
-        with open(os.path.join(local_dest_path, 'stderr.log')) as f:
-            print(f.read())
 
         self.assertNotIn(job_response['status'], {'failed', 'dismissed'})
         self.assertEqual(
@@ -174,12 +168,10 @@ class PyGeoAPIServerTests(unittest.TestCase):
 
     def testExecuteProcessErrorSync(self):
         """Test executing a datastack that should cause a model error."""
-        response = self.client.post(f'/processes/execute/execution', json={
-            'inputs': {
-                # this datastack includes an invalid raster path
-                'datastack_url': 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_error_datastack.tgz'
-            }
-        })
+        response = self.client.post(
+            f'/processes/execute/execution',
+            json={'inputs': {'datastack_url': ERROR_DATASTACK_URL}}
+        )
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.get_data(as_text=True))
         self.assertEqual(set(data.keys()), {'workspace_url'})
@@ -246,3 +238,16 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'results.json'       # json results file used by pygeoapi
             }
         )
+
+
+class UtilsTests(unittest.TestCase):
+
+     def setUp(self):
+        self.workspace_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.workspace_dir)
+
+    def testDownloadAndExtractDatastack(self):
+
+
