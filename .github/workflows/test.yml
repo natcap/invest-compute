@@ -136,11 +136,12 @@ jobs:
         uses: mamba-org/setup-micromamba@v2
         with:
           environment-name: env
+          # pin numpy: https://github.com/natcap/invest/issues/2288
           create-args: >-
             python=3.13
             natcap.invest
             pytest
-            numpy<2.4.0  # https://github.com/natcap/invest/issues/2288
+            numpy<2.4.0
           condarc: |
             channels:
               - conda-forge
