@@ -206,7 +206,6 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-
         comment = json.loads(self.get_scontrol_data(job_id, 'comment'))
         if not comment:
             # increase returned field width up to 1000 characters
@@ -234,11 +233,12 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        job_metadata = {
+        job_metadata = self.get_job_metadata(job_id)
+        return {
             "type": "process",
             "identifier": job_id,
-            "process_id": self.get_job_metadata(job_id)['process_id'],
-            "location": self.get_job_metadata(job_id)['results_path'],
+            "process_id": job_metadata['process_id'],
+            "location": job_metadata['results_path'],
             "created": self.get_job_submit_time(job_id),
             "started": self.get_job_start_time(job_id),
             "finished": self.get_job_end_time(job_id),
@@ -248,8 +248,6 @@ class SlurmManager(BaseManager):
             "message": "",
             "progress": -1
         }
-        print(job_metadata)
-        return job_metadata
 
     def get_job_result(self, job_id: str) -> Tuple[str, Any]:
         """
@@ -263,14 +261,12 @@ class SlurmManager(BaseManager):
                                          be returned
         :returns: `tuple` of mimetype and raw output
         """
-        print('getting job result')
-        job_metadata = self.get_job(job_id)
-        # if job_metadata['status'] != JobStatus.successful.value:
-        #     return (None,)
-        with open(job_metadata["location"], "r") as file:
+        job_info = self.get_job(job_id)
+        if job_info['status'] != JobStatus.successful.value:
+            return (None,)
+        with open(job_info["location"], "r") as file:
             data = json.load(file)
-            print(data)
-        return job_metadata["mimetype"], data
+        return job_info["mimetype"], data
 
     def delete_job(self, job_id: str) -> bool:
         """
@@ -314,7 +310,6 @@ class SlurmManager(BaseManager):
                   response
         """
         processor = self.get_processor(process_id)
-        print('requested response:', requested_response)
         if execution_mode == RequestedProcessExecutionMode.respond_async:
             job_control_options = processor.metadata.get(
                 'jobControlOptions', [])
@@ -323,7 +318,6 @@ class SlurmManager(BaseManager):
                 ProcessExecutionMode.async_execute.value in job_control_options
                 )
             if self.is_async and process_supports_async:
-                print('async')
                 LOGGER.debug('Asynchronous execution')
                 handler = self._execute_handler_async
                 response_headers = {
@@ -331,7 +325,6 @@ class SlurmManager(BaseManager):
                         RequestedProcessExecutionMode.respond_async.value)
                 }
             else:
-                print('sync')
                 LOGGER.debug('Synchronous execution')
                 handler = self._execute_handler_sync
                 response_headers = {
@@ -340,14 +333,12 @@ class SlurmManager(BaseManager):
                 }
         elif execution_mode == RequestedProcessExecutionMode.wait:
             # client wants sync - pygeoapi implicitly supports sync mode
-            print('sync')
             LOGGER.debug('Synchronous execution')
             handler = self._execute_handler_sync
             response_headers = {
                 'Preference-Applied': RequestedProcessExecutionMode.wait.value}
         else:  # client has no preference
             # according to OAPI - Processes spec we ought to respond with sync
-            print('sync')
             LOGGER.debug('Synchronous execution')
             handler = self._execute_handler_sync
             response_headers = None
@@ -358,19 +349,19 @@ class SlurmManager(BaseManager):
             requested_outputs,
             requested_response=requested_response)
 
-        print("outputs:", outputs)
         return job_id, mime_type, outputs, status, response_headers
-
 
     def monitor_job_status(self, job_id, workspace_dir, process_output_func):
         """Poll the slurm job until it completes, then perform final processing.
 
         Args:
-            job_id:
-            workspace_dir:
-            process_output_func:
+            job_id: id of the slurm job
+            workspace_dir: slurm job's workspace directory
+            process_output_func: the Process's output processing method that will
+                be run after the job completes
 
         Returns:
+            None
         """
         try:
             # wait for the slurm job to complete
@@ -383,11 +374,9 @@ class SlurmManager(BaseManager):
                     break
 
             # get the exit code from the job data in sacct
-            exit_code = int(subprocess.run([
-                'sacct', '--noheader', '-X', '-j', job_id, '-o', 'ExitCode'
-            ], capture_output=True, text=True, check=True).stdout.strip().split(':')[0])
+            # is returned in the format <exit code>:<signal number>
+            exit_code = int(self.get_sacct_data(job_id, 'ExitCode').split(':')[0])
             LOGGER.debug(f'Exit code of slurm job {job_id}: {exit_code}')
-
             if exit_code != 0:
                 LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
 
@@ -395,7 +384,6 @@ class SlurmManager(BaseManager):
             process_output_func(workspace_dir)
 
         except Exception as err:
-            print('caught error', err)
             # TODO assess correct exception type and description to help users
             # NOTE, the /results endpoint should return the error HTTP status
             # for jobs that failed, the specification says that failing jobs
@@ -413,12 +401,10 @@ class SlurmManager(BaseManager):
             LOGGER.exception(err)
 
         finally:
-            print('finally')
             # Upload the workspace even if something went wrong, so that the
             # user can access the slurm related files and any partial results.
             LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
             upload_directory_to_bucket(workspace_dir)
-
 
     def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
                                subscriber=None, requested_response=RequestedResponse.raw.value):
@@ -429,19 +415,19 @@ class SlurmManager(BaseManager):
         will be written to disk
         output store. There is no clean-up of old process outputs.
 
-        :param processor: `pygeoapi.process` object
-        :param data_dict: `dict` of data parameters
-        :param requested_outputs: `dict` optionally specifying the subset of
-                                  required outputs - defaults to all outputs.
-                                  The value of any key may be an object and
-                                  include the property `transmissionMode`
-                                  (defaults to `value`)
-                                  Note: 'optional' is for backward
-                                  compatibility.
-        :param requested_response: `RequestedResponse` optionally specifying
-                                   raw or document (default is `raw`)
+        Args:
+            processor: `pygeoapi.process` object
+            data_dict: `dict` of data parameters
+            requested_outputs: `dict` optionally specifying the subset of
+                required outputs - defaults to all outputs.The value of any
+                key may be an object and include the property `transmissionMode`
+                (defaults to `value`) Note: 'optional' is for backward
+                compatibility.
+            requested_response: `RequestedResponse` optionally specifying
+                raw or document (default is `raw`)
 
-        :returns: tuple of MIME type, response payload and status
+        Returns:
+            tuple of job id, MIME type, response payload, and status
         """
         try:
             job_id, workspace_dir = self.submit_slurm_job(processor, data_dict)
@@ -456,17 +442,12 @@ class SlurmManager(BaseManager):
         monitor_thread = threading.Thread(
             target=self.monitor_job_status,
             args=(job_id, workspace_dir, processor.process_output))
-        print('start thread')
         monitor_thread.start()
-        print('join thread')
         monitor_thread.join()
-        print('get final status')
         final_status = self.get_job_status(job_id)
-        print(final_status)
 
         with open(os.path.join(workspace_dir, 'results.json')) as results_file:
             outputs = json.load(results_file)
-            print('json outputs:', outputs)
 
         if requested_response == RequestedResponse.document.value:
             outputs = {
@@ -474,28 +455,24 @@ class SlurmManager(BaseManager):
             }
         return job_id, 'application/json', outputs, final_status
 
-
     def _execute_handler_async(self, processor, data_dict, requested_outputs=None,
                               requested_response=RequestedResponse.raw.value):
         """
         Asynchronous execution handler
 
-        :param processor: `pygeoapi.process` object
-        :param job_id: job identifier
-        :param data_dict: `dict` of data parameters
-        :param requested_outputs: `dict` optionally specifying the subset of
-                                  required outputs - defaults to all outputs.
-                                  The value of any key may be an object and
-                                  include the property `transmissionMode`
-                                  (defaults to `value`)
-                                  Note: 'optional' is for backward
-                                  compatibility.
-        :param subscriber: optional `Subscriber` specifying callback URLs
-        :param requested_response: `RequestedResponse` optionally specifying
-                                   raw or document (default is `raw`)
+        Args:
+            processor: `pygeoapi.process` object
+            data_dict: `dict` of data parameters
+            requested_outputs: `dict` optionally specifying the subset of
+                required outputs - defaults to all outputs.The value of any
+                key may be an object and include the property `transmissionMode`
+                (defaults to `value`) Note: 'optional' is for backward
+                compatibility.
+            requested_response: `RequestedResponse` optionally specifying
+                raw or document (default is `raw`)
 
-        :returns: tuple of None (i.e. initial response payload)
-                  and JobStatus.accepted (i.e. initial job status)
+        Returns:
+            tuple of job id, MIME type, response payload, and status
         """
         try:
             job_id, workspace_dir = self.submit_slurm_job(processor, data_dict)
@@ -522,7 +499,6 @@ class SlurmManager(BaseManager):
                 'outputs': [outputs]
             }
         return job_id, 'application/json', outputs, JobStatus.accepted
-
 
     def submit_slurm_job(self, processor, data_dict):
         """Submit a slurm job to execute the process.
@@ -553,7 +529,6 @@ class SlurmManager(BaseManager):
             LOGGER.debug(fp.read())
 
         bucket_url = BUCKET.blob(Path(workspace_dir).name).public_url
-        print(bucket_url)
         bucket_gs_url = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
         results_json_path = os.path.join(workspace_dir, 'results.json')
         with open(results_json_path, 'w') as fp:
@@ -564,7 +539,6 @@ class SlurmManager(BaseManager):
             'results_path': results_json_path,
             'process_id': processor.metadata['id']
         })
-        print(job_metadata)
 
         # Submit the job
         try:
@@ -586,9 +560,7 @@ class SlurmManager(BaseManager):
 
         job_id = result.stdout.strip()
         LOGGER.info(f"Job submitted successfully with ID: {job_id}")
-
         return job_id, workspace_dir
-
 
     def __repr__(self):
         return f'<SlurmManager> {self.name}'
