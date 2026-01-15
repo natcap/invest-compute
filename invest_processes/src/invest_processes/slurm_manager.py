@@ -154,15 +154,12 @@ class SlurmManager(BaseManager):
     def get_scontrol_data(self, job_id, field_name):
         scontrol_command = ['scontrol', '--json', 'show', 'job', str(job_id)]
         LOGGER.debug('Calling scontrol: ' + str(scontrol_command))
-        result = subprocess.run(
+        result = json.loads(subprocess.run(
             scontrol_command, capture_output=True, text=True, check=True
-        )
-        print(result)
-        result = result.stdout.strip()
-        print(result)
-        result = json.loads(result)['jobs'][0][field_name]
-        print(result)
-        return result
+        ).stdout.strip())
+        if len(result['jobs']) == 0:
+            return None
+        return result['jobs'][0][field_name]
 
     def get_sacct_data(self, job_id, field_name):
 
@@ -193,9 +190,6 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-
-        print('result from fake job:', self.get_scontrol_data(1000, 'comment'))
-
         comment = json.loads(self.get_scontrol_data(job_id, 'comment'))
         if not comment:
             # increase returned field width up to 1000 characters
