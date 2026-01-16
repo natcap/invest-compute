@@ -133,7 +133,8 @@ class PyGeoAPIServerTests(unittest.TestCase):
         # https://github.com/geopython/pygeoapi/issues/2197
         self.assertEqual(set(execution_response.keys()), {'status', 'type', 'id'})
         self.assertEqual(execution_response['status'], 'accepted')
-        self.assertEqual(execution_response['type'], 'process')  # according to the OGC standard this should always be 'process'
+        # according to the OGC standard this should always be 'process'
+        self.assertEqual(execution_response['type'], 'process')
         self.assertEqual(
             response.headers['Location'],
             f'http://localhost:5000/jobs/{execution_response["id"]}')
@@ -163,7 +164,6 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(
             set(os.listdir(local_dest_path)),
             {
-                'datastack.tgz',     # datastack archive downloaded from the input url
                 'datastack',         # extracted datastack directory
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job
@@ -192,7 +192,6 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(
             set(os.listdir(local_dest_path)),
             {
-                'datastack.tgz',     # datastack archive downloaded from the input url
                 'datastack',         # extracted datastack directory
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job
@@ -240,7 +239,6 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(
             set(os.listdir(local_dest_path)),
             {
-                'datastack.tgz',     # datastack archive downloaded from the input url
                 'datastack',         # extracted datastack directory
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job

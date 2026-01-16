@@ -113,11 +113,7 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        status = subprocess.run([
-            'sacct', '--noheader', '-X',
-            '-j', job_id,
-            '-o', 'State'
-        ], capture_output=True, text=True, check=True).stdout.strip()
+        status = self.get_sacct_data(job_id, 'State')
         LOGGER.debug(f'Status of slurm job {job_id}: {status}')
 
         # Map slurm job statuses to OGC Process job statuses
@@ -157,9 +153,8 @@ class SlurmManager(BaseManager):
         Returns:
             string field value
         """
-
         scontrol_command = ['scontrol', '--json', 'show', 'job', str(job_id)]
-        LOGGER.debug('Calling scontrol: ' + str(scontrol_command))
+        LOGGER.debug('Calling scontrol: ' + ' '.join(scontrol_command))
         result = json.loads(subprocess.run(
             scontrol_command, capture_output=True, text=True, check=True
         ).stdout.strip())
@@ -181,10 +176,11 @@ class SlurmManager(BaseManager):
             'sacct', '--noheader', '-X',
             '-j', job_id,
             '-o', field_name]
-        LOGGER.debug('Calling sacct: ' + str(sacct_command))
+        LOGGER.debug('Calling sacct: ' + ' '.join(sacct_command))
         result = subprocess.run(
             sacct_command, capture_output=True, text=True, check=True
         ).stdout.strip()
+        LOGGER.debug(f'stdout from sacct command: {result}')
         return result
 
     def get_job_metadata(self, job_id):
