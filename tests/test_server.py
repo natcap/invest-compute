@@ -29,7 +29,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         """Test execution of the 'execute' process in sync mode."""
         response = self.client.post('/processes/execute/execution', json={
             'inputs': {
-                'datastack_url': self.datastack_url
+                'datastack_url': CARBON_DATASTACK_URL
             }
         })
         self.assertEqual(response.status_code, 200)
@@ -208,7 +208,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         """Validation of a datastack should return validation messages"""
         response = self.client.post(f'/processes/validate/execution', json={
             'inputs': {
-                'datastack_url': self.datastack_url
+                'datastack_url': CARBON_DATASTACK_URL
             }
         })
         self.assertEqual(response.status_code, 200)

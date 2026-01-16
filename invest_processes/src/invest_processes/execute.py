@@ -5,7 +5,7 @@ import tempfile
 import textwrap
 import time
 
-from invest_processes import utils
+from invest_processes.utils import download_and_extract_datastack
 from natcap.invest import datastack, models, spec, utils
 from pygeoapi.process.base import BaseProcessor, ProcessorExecuteError
 
@@ -77,7 +77,7 @@ class ExecuteProcessor(BaseProcessor):
             string contents of the script
         """
         extracted_datastack_dir = os.path.join(workspace_dir, 'datastack')
-        utils.download_and_extract_datastack(datastack_url, extracted_datastack_dir)
+        download_and_extract_datastack(datastack_url, extracted_datastack_dir)
 
         # Parse the extracted datastack JSON. Datastack archives created in the
         # workbench should have the JSON file named parameters.invest.json.
