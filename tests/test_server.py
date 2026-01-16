@@ -242,7 +242,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
 
 class UtilsTests(unittest.TestCase):
 
-     def setUp(self):
+    def setUp(self):
         self.workspace_dir = tempfile.mkdtemp()
 
     def tearDown(self):
