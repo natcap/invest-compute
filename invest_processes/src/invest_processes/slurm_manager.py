@@ -135,6 +135,8 @@ class SlurmManager(BaseManager):
             'TIMEOUT': JobStatus.failed         # terminated due to reaching the time limit, such as those configured in slurm.conf or specified for the individual job
         }
 
+        return JobStatus.successful
+
         # return as if successful in case of failure so that error details
         # can be returned. The user will need to check the logs to confirm
         # whether the model actually succeeded or not.
