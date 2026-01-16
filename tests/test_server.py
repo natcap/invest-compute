@@ -176,8 +176,10 @@ class PyGeoAPIServerTests(unittest.TestCase):
             '/processes/execute/execution',
             json={'inputs': {'datastack_url': ERROR_DATASTACK_URL}}
         )
-        self.assertEqual(response.status_code, 400)
+        print(response)
         data = json.loads(response.get_data(as_text=True))
+        print(data)
+        self.assertEqual(response.status_code, 400)
         self.assertEqual(set(data.keys()), {'workspace_url'})
 
         local_dest_path = os.path.join(self.workspace_dir, 'results')
