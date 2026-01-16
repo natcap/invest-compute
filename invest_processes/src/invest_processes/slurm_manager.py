@@ -143,7 +143,7 @@ class SlurmManager(BaseManager):
         # can be returned. The user will need to check the logs to confirm
         # whether the model actually succeeded or not.
         # https://github.com/geopython/pygeoapi/issues/2203
-        if status_map[status] == JobStastus.failed:
+        if status_map[status] == JobStatus.failed:
             return JobStatus.successful
         return status_map[status]
 
