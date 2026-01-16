@@ -1,14 +1,11 @@
-import importlib
 import json
 import logging
 import os
-import tarfile
-import tempfile
 import textwrap
 import time
 
 from invest_processes.utils import download_and_extract_datastack
-from natcap.invest import datastack, models, spec, utils
+from natcap.invest import datastack
 from pygeoapi.process.base import BaseProcessor, ProcessorExecuteError
 
 LOGGER = logging.getLogger(__name__)
@@ -142,7 +139,6 @@ class ValidateProcessor(BaseProcessor):
             })
         with open(os.path.join(workspace_dir, 'results.json'), 'w') as file:
             json.dump(results, file)
-
 
     def __repr__(self):
         return f'<InVESTValidateProcessor> {self.name}'

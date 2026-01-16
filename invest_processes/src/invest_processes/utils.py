@@ -1,8 +1,10 @@
 import os
 import tarfile
+import tempfile
 
 from pygeoapi.process.base import ProcessorExecuteError
 import requests
+
 
 def download_and_extract_datastack(datastack_url, extracted_datastack_dir):
     """Download and extract a datastack tgz archive to a given local directory.

@@ -1,12 +1,9 @@
-import importlib
 import logging
 import os
-import tempfile
 import textwrap
-import time
 
 from invest_processes.utils import download_and_extract_datastack
-from natcap.invest import datastack, models, spec, utils
+from natcap.invest import datastack
 from pygeoapi.process.base import BaseProcessor, ProcessorExecuteError
 
 LOGGER = logging.getLogger(__name__)
@@ -49,6 +46,7 @@ PROCESS_METADATA = {
         }
     }
 }
+
 
 class ExecuteProcessor(BaseProcessor):
     """InVEST execute process"""
@@ -107,7 +105,6 @@ class ExecuteProcessor(BaseProcessor):
             empty dict
         """
         pass
-
 
     def __repr__(self):
         return f'<InVESTExecuteProcessor> {self.name}'

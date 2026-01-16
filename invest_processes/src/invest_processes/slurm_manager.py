@@ -1,21 +1,16 @@
 import json
 import logging
-from multiprocessing import dummy
 import os
 from pathlib import Path
 import subprocess
 import tempfile
-import textwrap
 import threading
 import time
-from typing import Any, Dict, Optional, Tuple
-import uuid
+from typing import Any, Optional, Tuple
 
 from google.cloud import storage
-from pygeoapi.process.base import BaseProcessor
 from pygeoapi.process.manager.base import BaseManager
 from pygeoapi.util import (
-    get_current_datetime,
     JobStatus,
     ProcessExecutionMode,
     RequestedProcessExecutionMode,
@@ -26,6 +21,7 @@ LOGGER = logging.getLogger(__name__)
 BUCKET_NAME = 'invest-compute-workspaces'
 STORAGE_CLIENT = storage.Client()
 BUCKET = STORAGE_CLIENT.bucket(BUCKET_NAME)
+
 
 def upload_directory_to_bucket(dir_path):
     """Upload everything in a given directory to the GCP bucket.
@@ -407,7 +403,7 @@ class SlurmManager(BaseManager):
             upload_directory_to_bucket(workspace_dir)
 
     def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
-                               subscriber=None, requested_response=RequestedResponse.raw.value):
+                              subscriber=None, requested_response=RequestedResponse.raw.value):
         """
         Synchronous execution handler
 
@@ -456,7 +452,7 @@ class SlurmManager(BaseManager):
         return job_id, 'application/json', outputs, final_status
 
     def _execute_handler_async(self, processor, data_dict, requested_outputs=None,
-                              requested_response=RequestedResponse.raw.value):
+                               requested_response=RequestedResponse.raw.value):
         """
         Asynchronous execution handler
 
@@ -517,7 +513,7 @@ class SlurmManager(BaseManager):
         # access after the job finishes.
         workspace_root = os.path.abspath('workspaces')
         os.makedirs(workspace_root, exist_ok=True)
-        workspace_dir = tempfile.mkdtemp(dir=workspace_root, prefix=f'slurm_wksp_')
+        workspace_dir = tempfile.mkdtemp(dir=workspace_root, prefix='slurm_wksp_')
         # create the slurm script in the workspace so that the user can see it
         script_path = os.path.join(workspace_dir, 'script.slurm')
         script = processor.create_slurm_script(**data_dict, workspace_dir=workspace_dir)
@@ -528,7 +524,6 @@ class SlurmManager(BaseManager):
         with open(script_path) as fp:
             LOGGER.debug(fp.read())
 
-        bucket_url = BUCKET.blob(Path(workspace_dir).name).public_url
         bucket_gs_url = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
         results_json_path = os.path.join(workspace_dir, 'results.json')
         with open(results_json_path, 'w') as fp:
