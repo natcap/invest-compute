@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+import datetime
 
 from pygeoapi import flask_app
 
@@ -121,7 +122,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
 
     def testExecuteProcessExecutionSlowAsync(self):
         """Test execution in async mode with a longer-running job."""
-        print('post request')
+        print('post request', datetime.now().strftime("%H:%M:%S"))
         response = self.client.post(
             '/processes/execute/execution',
             json={'inputs': {'datastack_url': SQ_DATASTACK_URL}},
@@ -129,7 +130,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         )
         # self.assertEqual(response.status_code, 201)
         execution_response = json.loads(response.get_data(as_text=True))
-        print('response:', execution_response)
+        print('response:', execution_response, datetime.now().strftime("%H:%M:%S"))
         # pygeoapi incorrectly calls this key 'id' instead of 'job_id'
         # https://github.com/geopython/pygeoapi/issues/2197
         # self.assertEqual(set(execution_response.keys()), {'status', 'type', 'id'})
