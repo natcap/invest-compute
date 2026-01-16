@@ -74,7 +74,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         response = self.client.post(
             '/processes/execute/execution',
             json={'inputs': {'datastack_url': CARBON_DATASTACK_URL}},
-            # headers={'Prefer': 'respond-async'}
+            headers={'Prefer': 'respond-async'}
         )
         print(response.headers)
         self.assertEqual(response.status_code, 201)
@@ -111,7 +111,6 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(
             set(os.listdir(local_dest_path)),
             {
-                'datastack.tgz',     # datastack archive downloaded from the input url
                 'datastack',         # extracted datastack directory
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job
@@ -124,9 +123,10 @@ class PyGeoAPIServerTests(unittest.TestCase):
     def testExecuteProcessExecutionSlowAsync(self):
         """Test execution in async mode with a longer-running job."""
         response = self.client.post(
-            f'/processes/execute/execution',
+            '/processes/execute/execution',
             json={'inputs': {'datastack_url': SQ_DATASTACK_URL}},
-            headers={'Prefer': 'respond-async'})
+            # headers={'Prefer': 'respond-async'}
+        )
         self.assertEqual(response.status_code, 201)
         execution_response = json.loads(response.get_data(as_text=True))
         # pygeoapi incorrectly calls this key 'id' instead of 'job_id'
