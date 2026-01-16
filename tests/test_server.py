@@ -5,7 +5,7 @@ import subprocess
 import tempfile
 import time
 import unittest
-import datetime
+from datetime import datetime
 
 from pygeoapi import flask_app
 
