@@ -10,7 +10,8 @@ from pygeoapi import flask_app
 
 CARBON_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_datastack.tgz'
 SQ_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_scenic_quality_datastack.tgz'
-ERROR_DATASTACL_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_error_datastack.tgz'
+ERROR_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_error_datastack.tgz'
+
 
 class PyGeoAPIServerTests(unittest.TestCase):
 
@@ -22,7 +23,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         shutil.rmtree(self.workspace_dir)
 
     def testExecuteProcessMetadata(self):
-        response = self.client.get(f'/processes/execute')
+        response = self.client.get('/processes/execute')
         self.assertEqual(response.status_code, 200)
 
     def testExecuteProcessExecutionSync(self):
@@ -70,7 +71,8 @@ class PyGeoAPIServerTests(unittest.TestCase):
 
     def testExecuteProcessExecutionAsync(self):
         """Test execution of the 'execute' process in async mode."""
-        response = self.client.post(f'/processes/execute/execution',
+        response = self.client.post(
+            '/processes/execute/execution',
             json={'inputs': {'datastack_url': CARBON_DATASTACK_URL}},
             # headers={'Prefer': 'respond-async'}
         )
@@ -97,12 +99,14 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 break
 
         results_response = json.loads(self.client.get(
-            f'/jobs/{execution_response["id"]}/results?f=json').get_data(as_text=True))
+            f'/jobs/{execution_response["id"]}/results?f=json').get_data(
+            as_text=True))
         print('results response:', results_response)
         local_dest_path = os.path.join(self.workspace_dir, 'results')
         os.mkdir(local_dest_path)
         subprocess.run([
-            'gcloud', 'storage', 'cp', '--recursive', f'{results_response["workspace_url"]}/*', local_dest_path
+            'gcloud', 'storage', 'cp', '--recursive',
+            f'{results_response["workspace_url"]}/*', local_dest_path
         ], check=True)
         self.assertEqual(
             set(os.listdir(local_dest_path)),
@@ -118,8 +122,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
         )
 
     def testExecuteProcessExecutionSlowAsync(self):
-        """Test execution of the 'execute' process in async mode with a longer-running job."""
-        response = self.client.post(f'/processes/execute/execution',
+        """Test execution in async mode with a longer-running job."""
+        response = self.client.post(
+            f'/processes/execute/execution',
             json={'inputs': {'datastack_url': SQ_DATASTACK_URL}},
             headers={'Prefer': 'respond-async'})
         self.assertEqual(response.status_code, 201)
@@ -144,12 +149,14 @@ class PyGeoAPIServerTests(unittest.TestCase):
             time.sleep(5)
 
         results_response = json.loads(self.client.get(
-            f'/jobs/{execution_response["id"]}/results?f=json').get_data(as_text=True))
+            f'/jobs/{execution_response["id"]}/results?f=json').get_data(
+            as_text=True))
 
         local_dest_path = os.path.join(self.workspace_dir, 'results')
         os.mkdir(local_dest_path)
         subprocess.run([
-            'gcloud', 'storage', 'cp', '--recursive', f'{results_response["workspace_url"]}/*', local_dest_path
+            'gcloud', 'storage', 'cp', '--recursive',
+            f'{results_response["workspace_url"]}/*', local_dest_path
         ], check=True)
 
         self.assertNotIn(job_response['status'], {'failed', 'dismissed'})
@@ -169,7 +176,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
     def testExecuteProcessErrorSync(self):
         """Test executing a datastack that should cause a model error."""
         response = self.client.post(
-            f'/processes/execute/execution',
+            '/processes/execute/execution',
             json={'inputs': {'datastack_url': ERROR_DATASTACK_URL}}
         )
         self.assertEqual(response.status_code, 400)
@@ -179,7 +186,8 @@ class PyGeoAPIServerTests(unittest.TestCase):
         local_dest_path = os.path.join(self.workspace_dir, 'results')
         os.mkdir(local_dest_path)
         subprocess.run([
-            'gcloud', 'storage', 'cp', '--recursive', f'{data["workspace_url"]}/*', local_dest_path
+            'gcloud', 'storage', 'cp', '--recursive',
+            f'{data["workspace_url"]}/*', local_dest_path
         ], check=True)
         self.assertEqual(
             set(os.listdir(local_dest_path)),
@@ -201,19 +209,20 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 err_log.read())
 
     def testValidateProcessMetadata(self):
-        response = self.client.get(f'/processes/validate')
+        response = self.client.get('/processes/validate')
         self.assertEqual(response.status_code, 200)
 
     def testValidateProcessExecutionSync(self):
         """Validation of a datastack should return validation messages"""
-        response = self.client.post(f'/processes/validate/execution', json={
+        response = self.client.post('/processes/validate/execution', json={
             'inputs': {
                 'datastack_url': CARBON_DATASTACK_URL
             }
         })
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.get_data(as_text=True))
-        self.assertEqual(set(data.keys()), {'workspace_url', 'validation_results'})
+        self.assertEqual(set(data.keys()),
+                         {'workspace_url', 'validation_results'})
         self.assertEqual(
             data['validation_results'],
             [{
@@ -225,7 +234,8 @@ class PyGeoAPIServerTests(unittest.TestCase):
         local_dest_path = os.path.join(self.workspace_dir, 'results')
         os.mkdir(local_dest_path)
         subprocess.run([
-            'gcloud', 'storage', 'cp', '--recursive', f'{data["workspace_url"]}/*', local_dest_path
+            'gcloud', 'storage', 'cp', '--recursive',
+            f'{data["workspace_url"]}/*', local_dest_path
         ], check=True)
         self.assertEqual(
             set(os.listdir(local_dest_path)),
