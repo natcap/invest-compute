@@ -5,8 +5,8 @@ import subprocess
 import tempfile
 import time
 import unittest
-from datetime import datetime
 
+from invest_processes.utils import download_and_extract_datastack
 from pygeoapi import flask_app
 
 CARBON_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_datastack.tgz'
@@ -67,7 +67,6 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'results.json'       # json results file used by pygeoapi
             }
         )
-        # curl -X POST -H "Content-Type: application/json" -d '{"inputs": {"datastack_url": "https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_datastack.tgz"}}' localhost:5000/processes/execute/execution
 
     def testExecuteProcessExecutionAsync(self):
         """Test execution of the 'execute' process in async mode."""
@@ -76,14 +75,14 @@ class PyGeoAPIServerTests(unittest.TestCase):
             json={'inputs': {'datastack_url': CARBON_DATASTACK_URL}},
             headers={'Prefer': 'respond-async'}
         )
-        print(response.headers)
         self.assertEqual(response.status_code, 201)
         execution_response = json.loads(response.get_data(as_text=True))
         # pygeoapi incorrectly calls this key 'id' instead of 'job_id'
         # https://github.com/geopython/pygeoapi/issues/2197
         self.assertEqual(set(execution_response.keys()), {'status', 'type', 'id'})
         self.assertEqual(execution_response['status'], 'accepted')
-        self.assertEqual(execution_response['type'], 'process')  # according to the OGC standard this should always be 'process'
+        # according to the OGC standard this should always be 'process'
+        self.assertEqual(execution_response['type'], 'process')
         self.assertEqual(
             response.headers['Location'],
             f'http://localhost:5000/jobs/{execution_response["id"]}')
@@ -93,7 +92,6 @@ class PyGeoAPIServerTests(unittest.TestCase):
         while True:
             job_response = json.loads(self.client.get(
                 f'/jobs/{execution_response["id"]}').get_data(as_text=True))
-            print('status:', job_response['status'])
             self.assertNotIn(job_response['status'], {'failed', 'dismissed'})
             if job_response['status'] == 'successful':
                 break
@@ -101,7 +99,6 @@ class PyGeoAPIServerTests(unittest.TestCase):
         results_response = json.loads(self.client.get(
             f'/jobs/{execution_response["id"]}/results?f=json').get_data(
             as_text=True))
-        print('results response:', results_response)
         local_dest_path = os.path.join(self.workspace_dir, 'results')
         os.mkdir(local_dest_path)
         subprocess.run([
@@ -122,24 +119,22 @@ class PyGeoAPIServerTests(unittest.TestCase):
 
     def testExecuteProcessExecutionSlowAsync(self):
         """Test execution in async mode with a longer-running job."""
-        print('post request', datetime.now().strftime("%H:%M:%S"))
         response = self.client.post(
             '/processes/execute/execution',
             json={'inputs': {'datastack_url': SQ_DATASTACK_URL}},
-            # headers={'Prefer': 'respond-async'}
+            headers={'Prefer': 'respond-async'}
         )
-        # self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.status_code, 201)
         execution_response = json.loads(response.get_data(as_text=True))
-        print('response:', execution_response, datetime.now().strftime("%H:%M:%S"))
         # pygeoapi incorrectly calls this key 'id' instead of 'job_id'
         # https://github.com/geopython/pygeoapi/issues/2197
-        # self.assertEqual(set(execution_response.keys()), {'status', 'type', 'id'})
-        # self.assertEqual(execution_response['status'], 'accepted')
+        self.assertEqual(set(execution_response.keys()), {'status', 'type', 'id'})
+        self.assertEqual(execution_response['status'], 'accepted')
         # according to the OGC standard this should always be 'process'
-        # self.assertEqual(execution_response['type'], 'process')
-        # self.assertEqual(
-        #     response.headers['Location'],
-        #     f'http://localhost:5000/jobs/{execution_response["id"]}')
+        self.assertEqual(execution_response['type'], 'process')
+        self.assertEqual(
+            response.headers['Location'],
+            f'http://localhost:5000/jobs/{execution_response["id"]}')
 
         # poll status until the job finishes
         # TODO: test with a longer running job
@@ -250,14 +245,18 @@ class PyGeoAPIServerTests(unittest.TestCase):
         )
 
 
-# class UtilsTests(unittest.TestCase):
+class UtilsTests(unittest.TestCase):
 
-#     def setUp(self):
-#         self.workspace_dir = tempfile.mkdtemp()
+    def setUp(self):
+        self.workspace_dir = tempfile.mkdtemp()
 
-#     def tearDown(self):
-#         shutil.rmtree(self.workspace_dir)
+    def tearDown(self):
+        shutil.rmtree(self.workspace_dir)
 
-#     def testDownloadAndExtractDatastack(self):
-
-
+    def testDownloadAndExtractDatastack(self):
+        """Test utility function for downloading and extracting a datastack."""
+        download_and_extract_datastack(CARBON_DATASTACK_URL, self.workspace_dir)
+        self.assertEqual(
+            set(os.listdir(self.workspace_dir)),
+            {'data', 'log.txt', 'parameters.invest.json'}
+        )
