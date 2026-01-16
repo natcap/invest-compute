@@ -179,7 +179,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         print(response)
         data = json.loads(response.get_data(as_text=True))
         print(data)
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(set(data.keys()), {'workspace_url'})
 
         local_dest_path = os.path.join(self.workspace_dir, 'results')
