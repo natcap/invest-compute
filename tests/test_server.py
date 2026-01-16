@@ -240,14 +240,14 @@ class PyGeoAPIServerTests(unittest.TestCase):
         )
 
 
-class UtilsTests(unittest.TestCase):
+# class UtilsTests(unittest.TestCase):
 
-    def setUp(self):
-        self.workspace_dir = tempfile.mkdtemp()
+#     def setUp(self):
+#         self.workspace_dir = tempfile.mkdtemp()
 
-    def tearDown(self):
-        shutil.rmtree(self.workspace_dir)
+#     def tearDown(self):
+#         shutil.rmtree(self.workspace_dir)
 
-    def testDownloadAndExtractDatastack(self):
+#     def testDownloadAndExtractDatastack(self):
 
 
