@@ -89,6 +89,9 @@ class ExecuteProcessor(BaseProcessor):
         # Create a workspace directory
         workspace_dir = os.path.join(workspace_dir, f'{model_id}_workspace')
 
+        print(json_path)
+        print('workspace:', workspace_dir)
+
         return textwrap.dedent(f"""\
             #!/bin/sh
             #SBATCH --time=10

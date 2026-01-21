@@ -161,6 +161,8 @@ jobs:
 
       - name: Run tests
         run: |
+          which invest
+          invest --version
           export PYGEOAPI_CONFIG=invest_processes/pygeoapi-config.yml
           export PYGEOAPI_OPENAPI=invest_processes/openapi.yml
           pygeoapi openapi generate $PYGEOAPI_CONFIG --output-file $PYGEOAPI_OPENAPI
