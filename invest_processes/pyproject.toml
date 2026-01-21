@@ -10,7 +10,7 @@ maintainers = [
 dynamic = ["version"] # the version is provided dynamically by setuptools_scm
 dependencies = [
     "flask",
-    "natcap.invest",
+    "git+https://github.com/natcap/invest@main",
     "pygeoapi",
     "google-cloud-storage"
 ]
