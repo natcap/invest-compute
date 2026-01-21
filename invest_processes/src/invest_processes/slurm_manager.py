@@ -359,7 +359,6 @@ class SlurmManager(BaseManager):
             # wait for the slurm job to complete
             while True:
                 print('monitoring', os.listdir(workspace_dir))
-                time.sleep(1)
                 # check the 'state' string from the job data in sacct
                 status = self.get_job_status(job_id)
                 LOGGER.debug(f'Status of slurm job {job_id}: {status}')
