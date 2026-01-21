@@ -157,7 +157,7 @@ jobs:
           workload_identity_provider: 'projects/1098785064656/locations/global/workloadIdentityPools/github-actions-invest-compute/providers/invest-compute'
 
       - name: Install package
-        run: cd invest_processes && pip install .
+        run: pip install git+https://github.com/emlys/invest@debug-compute && cd invest_processes && pip install .
 
       - name: Run tests
         run: |
