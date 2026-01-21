@@ -360,6 +360,7 @@ class SlurmManager(BaseManager):
         try:
             # wait for the slurm job to complete
             while True:
+                print('monitoring', os.listdir(workspace_dir))
                 time.sleep(1)
                 # check the 'state' string from the job data in sacct
                 status = self.get_job_status(job_id)
@@ -374,6 +375,7 @@ class SlurmManager(BaseManager):
             if exit_code != 0:
                 LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
 
+            print('process output func', os.listdir(workspace_dir))
             # process outputs, should update results.json in the workspace
             process_output_func(workspace_dir)
 
