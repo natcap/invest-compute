@@ -225,6 +225,7 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
+        time.sleep(1)
         job_metadata = self.get_job_metadata(job_id)
         return {
             "type": "process",
