@@ -96,6 +96,8 @@ class ExecuteProcessor(BaseProcessor):
             #!/bin/sh
             #SBATCH --time=10
             invest run --datastack {json_path} --workspace {workspace_dir} {model_id}
+            echo "contents:"
+            ls {workspace_dir}
             """)
 
     def process_output(self, workspace_dir):
@@ -107,6 +109,8 @@ class ExecuteProcessor(BaseProcessor):
         Returns:
             empty dict
         """
+        print('list directory:')
+        print(os.listdir(workspace_dir))
         pass
 
     def __repr__(self):
