@@ -115,6 +115,8 @@ class SlurmManager(BaseManager):
         """
         status = self.get_sacct_data(job_id, 'State')
         LOGGER.debug(f'Status of slurm job {job_id}: {status}')
+        if not status:
+            return None
 
         # Map slurm job statuses to OGC Process job statuses
         # According to the Processes standard, job statuses may be
@@ -491,7 +493,14 @@ class SlurmManager(BaseManager):
             outputs = {
                 'outputs': [outputs]
             }
-        time.sleep(1)  # give time for the job to be recorded by slurm
+
+        # wait for the job to be recorded by slurm
+        for i in range(60):
+            print('polling')
+            if self.get_job_status(job_id) is not None:
+                break
+            time.sleep(1)
+
         return job_id, 'application/json', outputs, JobStatus.accepted
 
     def submit_slurm_job(self, processor, data_dict):
