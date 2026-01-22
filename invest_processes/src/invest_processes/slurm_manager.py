@@ -496,10 +496,12 @@ class SlurmManager(BaseManager):
 
         # wait for the job to be recorded by slurm
         for i in range(60):
-            print('polling')
             if self.get_job_status(job_id) is not None:
                 break
             time.sleep(1)
+        else:
+            LOGGER.error(
+                'Newly submitted job status failed to appear after 60 seconds')
 
         return job_id, 'application/json', outputs, JobStatus.accepted
 
