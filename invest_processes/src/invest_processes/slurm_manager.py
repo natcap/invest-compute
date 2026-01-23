@@ -555,7 +555,7 @@ class SlurmManager(BaseManager):
 
         job_metadata = json.dumps({
             'workspace_dir': workspace_dir,
-            'results_path': results_json_path,
+            'results_path': os.path.join(workspace_dir, 'results.json'),
             'process_id': processor.metadata['id']
         })
 
