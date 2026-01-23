@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -231,7 +230,7 @@ class SlurmManager(BaseManager):
         # is still 'running' for the purpose of API clients.
         if job_status in {JobStatus.failed, JobStatus.dismissed, JobStatus.successful}:
             workspace_dir = self.get_job_metadata(job_id)['workspace_dir']
-            if not os.path.exists(os.path.join(workspace_dir, 'job_complete_token')):
+            if not (Path(workspace_dir) / 'job_complete_token').exists():
                 LOGGER.debug('Job finished but  not yet complete.')
                 job_status = JobStatus.running
             else:
@@ -403,7 +402,7 @@ class SlurmManager(BaseManager):
         finally:
             try:
                 bucket_gs_url = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
-                results_json_path = os.path.join(workspace_dir, 'results.json')
+                results_json_path = Path(workspace_dir) / 'results.json'
                 with open(results_json_path, 'w') as results_json:
                     results_json.write(json.dumps({'workspace_url': bucket_gs_url}))
 
@@ -419,7 +418,7 @@ class SlurmManager(BaseManager):
                 LOGGER.debug('Creating job complete token')
                 # write token to workspace directory
                 # this marks that post processing is complete
-                with open(os.path.join(workspace_dir, 'job_complete_token'), 'w') as file:
+                with open(Path(workspace_dir) / 'job_complete_token', 'w') as file:
                     file.write('job complete')
 
     def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
@@ -462,7 +461,7 @@ class SlurmManager(BaseManager):
         monitor_thread.join()
         final_status = self.get_job_status(job_id)
 
-        with open(os.path.join(workspace_dir, 'results.json')) as results_file:
+        with open(Path(workspace_dir) / 'results.json') as results_file:
             outputs = json.load(results_file)
 
         if requested_response == RequestedResponse.document.value:
@@ -541,11 +540,9 @@ class SlurmManager(BaseManager):
         # and the process being run may create additional outputs in it.
         # This entire directory will be copied over to GCP for the user to
         # access after the job finishes.
-        workspace_root = os.path.abspath('workspaces')
-        os.makedirs(workspace_root, exist_ok=True)
-        workspace_dir = tempfile.mkdtemp(dir=workspace_root, prefix='slurm_wksp_')
+        workspace_dir = tempfile.mkdtemp(prefix='slurm_wksp_')
         # create the slurm script in the workspace so that the user can see it
-        script_path = os.path.join(workspace_dir, 'script.slurm')
+        script_path = Path(workspace_dir) / 'script.slurm'
         script = processor.create_slurm_script(**data_dict, workspace_dir=workspace_dir)
         with open(script_path, 'w') as fp:
             fp.write(script)
@@ -556,7 +553,7 @@ class SlurmManager(BaseManager):
 
         job_metadata = json.dumps({
             'workspace_dir': workspace_dir,
-            'results_path': os.path.join(workspace_dir, 'results.json'),
+            'results_path': Path(workspace_dir) / 'results.json',
             'process_id': processor.metadata['id']
         })
 

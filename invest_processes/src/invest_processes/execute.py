@@ -1,5 +1,4 @@
 import logging
-import os
 import textwrap
 
 from invest_processes.utils import download_and_extract_datastack
@@ -74,8 +73,8 @@ class ExecuteProcessor(BaseProcessor):
             string contents of the script
         """
         json_path, model_id = download_and_extract_datastack(
-            datastack_url, os.path.join(workspace_dir, 'datastack'))
-        workspace_dir = os.path.join(workspace_dir, f'{model_id}_workspace')
+            datastack_url, Path(workspace_dir) / 'datastack')
+        workspace_dir = Path(workspace_dir) / f'{model_id}_workspace'
         return textwrap.dedent(f"""\
             #!/bin/sh
             #SBATCH --time=10

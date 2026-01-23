@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import textwrap
 import time
 
@@ -89,7 +88,7 @@ class ValidateProcessor(BaseProcessor):
             string contents of the script
         """
         json_path, _ = download_and_extract_datastack(
-            datastack_url, os.path.join(workspace_dir, 'datastack'))
+            datastack_url, Path(workspace_dir) / 'datastack')
         return textwrap.dedent(f"""\
             #!/bin/sh
             #SBATCH --time=10
@@ -105,14 +104,14 @@ class ValidateProcessor(BaseProcessor):
         Returns:
             dict of validation results
         """
-        stdout_filepath = os.path.join(workspace_dir, 'stdout.log')
+        stdout_filepath = Path(workspace_dir) / 'stdout.log'
         with open(stdout_filepath) as stdout:
             content = stdout.read()
         LOGGER.debug('Processing stdout:\n')
         LOGGER.debug(content)
         json_output = json.loads(content)
 
-        with open(os.path.join(workspace_dir, 'results.json')) as file:
+        with open(Path(workspace_dir) / 'results.json') as file:
             results = json.load(file)
 
         # add validation messages to the results json file
@@ -122,7 +121,7 @@ class ValidateProcessor(BaseProcessor):
                 'input_ids': input_ids,
                 'error_message': error_message
             })
-        with open(os.path.join(workspace_dir, 'results.json'), 'w') as file:
+        with open(Path(workspace_dir) / 'results.json', 'w') as file:
             json.dump(results, file)
 
     def __repr__(self):
