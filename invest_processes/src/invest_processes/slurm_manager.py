@@ -383,9 +383,6 @@ class SlurmManager(BaseManager):
             if exit_code != 0:
                 LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
 
-            # process outputs, should update results.json in the workspace
-            process_output_func(workspace_dir)
-
         except Exception as err:
             # TODO assess correct exception type and description to help users
             # NOTE, the /results endpoint should return the error HTTP status
@@ -409,6 +406,9 @@ class SlurmManager(BaseManager):
                 results_json_path = os.path.join(workspace_dir, 'results.json')
                 with open(results_json_path, 'w') as results_json:
                     results_json.write(json.dumps({'workspace_url': bucket_gs_url}))
+
+                # process outputs, should update results.json in the workspace
+                process_output_func(workspace_dir)
 
                 # Upload the workspace even if something went wrong, so that the
                 # user can access the slurm related files and any partial results.
