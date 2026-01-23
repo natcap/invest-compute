@@ -92,7 +92,6 @@ class PyGeoAPIServerTests(unittest.TestCase):
         while True:
             job_response = json.loads(self.client.get(
                 f'/jobs/{execution_response["id"]}').get_data(as_text=True))
-            print('job response:', job_response)
             self.assertNotIn(job_response['status'], {'failed', 'dismissed'})
             if job_response['status'] == 'successful':
                 break
@@ -143,7 +142,6 @@ class PyGeoAPIServerTests(unittest.TestCase):
         while True:
             job_response = json.loads(self.client.get(
                 f'/jobs/{execution_response["id"]}').get_data(as_text=True))
-            print('job response:', job_response)
             if job_response['status'] in {'successful', 'failed', 'dismissed'}:
                 break
             time.sleep(5)
@@ -178,9 +176,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
             '/processes/execute/execution',
             json={'inputs': {'datastack_url': ERROR_DATASTACK_URL}}
         )
-        print(response)
         data = json.loads(response.get_data(as_text=True))
-        print(data)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(set(data.keys()), {'workspace_url'})
 
@@ -190,13 +186,6 @@ class PyGeoAPIServerTests(unittest.TestCase):
             'gcloud', 'storage', 'cp', '--recursive',
             f'{data["workspace_url"]}/*', local_dest_path
         ], check=True)
-        print('stdout:')
-        with open(os.path.join(local_dest_path, 'stdout.log')) as f:
-            print(f.read())
-
-        print('stderr:')
-        with open(os.path.join(local_dest_path, 'stderr.log')) as f:
-            print(f.read())
 
         self.assertEqual(
             set(os.listdir(local_dest_path)),
@@ -267,8 +256,12 @@ class UtilsTests(unittest.TestCase):
 
     def testDownloadAndExtractDatastack(self):
         """Test utility function for downloading and extracting a datastack."""
-        download_and_extract_datastack(CARBON_DATASTACK_URL, self.workspace_dir)
+        json_path, model_id = download_and_extract_datastack(
+            CARBON_DATASTACK_URL, self.workspace_dir)
         self.assertEqual(
             set(os.listdir(self.workspace_dir)),
             {'data', 'log.txt', 'parameters.invest.json'}
         )
+        self.assertEqual(json_path, os.path.join(
+            self.workspace_dir, 'parameters.invest.json'))
+        self.assertEqual(model_id, 'carbon')

@@ -74,30 +74,13 @@ class ExecuteProcessor(BaseProcessor):
         Returns:
             string contents of the script
         """
-        extracted_datastack_dir = os.path.join(workspace_dir, 'datastack')
-        download_and_extract_datastack(datastack_url, extracted_datastack_dir)
-
-        # Parse the extracted datastack JSON. Datastack archives created in the
-        # workbench should have the JSON file named parameters.invest.json.
-        json_path = os.path.join(extracted_datastack_dir, 'parameters.invest.json')
-        try:
-            model_id = datastack.extract_parameter_set(json_path).model_id
-        except Exception as error:
-            raise ProcessorExecuteError(
-                1, f'Error when parsing JSON datastack:\n{str(error)}')
-
-        # Create a workspace directory
+        json_path, model_id = download_and_extract_datastack(
+            datastack_url, os.path.join(workspace_dir, 'datastack'))
         workspace_dir = os.path.join(workspace_dir, f'{model_id}_workspace')
-
-        print(json_path)
-        print('workspace:', workspace_dir)
-
         return textwrap.dedent(f"""\
             #!/bin/sh
             #SBATCH --time=10
             invest run --datastack {json_path} --workspace {workspace_dir} {model_id}
-            echo "contents:"
-            ls {workspace_dir}
             """)
 
     def process_output(self, workspace_dir):
@@ -109,8 +92,6 @@ class ExecuteProcessor(BaseProcessor):
         Returns:
             empty dict
         """
-        print('list directory:')
-        print(os.listdir(workspace_dir))
         pass
 
     def __repr__(self):

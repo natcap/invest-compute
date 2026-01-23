@@ -229,11 +229,16 @@ class SlurmManager(BaseManager):
         """
         job_metadata = self.get_job_metadata(job_id)
         job_status = self.get_job_status(job_id)
+
+        # After the job finishes, we need to wait for the workspace to finish
+        # uploading to the bucket. After uploading has finished, we create a
+        # token file in the workspace to indicate that it's complete.
+        # Check for that token, and if it's not present, the job status
+        # is still 'running' for the purpose of API clients.
         if job_status in {JobStatus.failed, JobStatus.dismissed, JobStatus.successful}:
-            workspace_dir = self.get_job_metadata(job_id)['workdir']
-            print(workspace_dir, os.listdir(workspace_dir))
+            workspace_dir = self.get_job_metadata(job_id)['workspace_dir']
             if not os.path.exists(os.path.join(workspace_dir, 'job_complete_token')):
-                LOGGER.debug('Job finished but post processing not yet complete.')
+                LOGGER.debug('Job finished but  not yet complete.')
                 job_status = JobStatus.running
             else:
                 LOGGER.debug('Job and post processing completed.')
@@ -370,7 +375,6 @@ class SlurmManager(BaseManager):
         try:
             # wait for the slurm job to complete
             while True:
-                print('monitoring', os.listdir(workspace_dir))
                 # check the 'state' string from the job data in sacct
                 status = self.get_job_status(job_id)
                 LOGGER.debug(f'Status of slurm job {job_id}: {status}')
@@ -385,7 +389,6 @@ class SlurmManager(BaseManager):
             if exit_code != 0:
                 LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
 
-            print('process output func', os.listdir(workspace_dir))
             # process outputs, should update results.json in the workspace
             process_output_func(workspace_dir)
 
@@ -412,13 +415,11 @@ class SlurmManager(BaseManager):
                 # user can access the slurm related files and any partial results.
                 LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
                 upload_directory_to_bucket(workspace_dir)
-                time.sleep(60)
-                print('finished uploading directory')
             finally:
+                LOGGER.debug('Creating job complete token')
                 # write token to workspace directory
                 # this marks that post processing is complete
                 with open(os.path.join(workspace_dir, 'job_complete_token'), 'w') as file:
-                    print('writing job complete token to', os.path.join(workspace_dir, 'job_complete_token'))
                     file.write('job complete')
 
     def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
@@ -559,7 +560,7 @@ class SlurmManager(BaseManager):
             fp.write(json.dumps({'workspace_url': bucket_gs_url}))
 
         job_metadata = json.dumps({
-            'workdir': workspace_dir,
+            'workspace_dir': workspace_dir,
             'results_path': results_json_path,
             'process_id': processor.metadata['id']
         })

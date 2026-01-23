@@ -14,7 +14,7 @@ def download_and_extract_datastack(datastack_url, extracted_datastack_dir):
         extracted_datastack_dir (str): local directory path to extract to
 
     Returns:
-        None
+        tuple of extracted json datastack path and model id
     """
     # Download the datastack from the given URL and
     response = requests.get(datastack_url)
@@ -36,3 +36,14 @@ def download_and_extract_datastack(datastack_url, extracted_datastack_dir):
         except Exception as err:
             raise ProcessorExecuteError(
                 1, f'Failed to extract datastack archive:\n{str(err)}')
+
+    # Parse the extracted datastack JSON. Datastack archives created in the
+    # workbench should have the JSON file named parameters.invest.json.
+    json_path = os.path.join(extracted_datastack_dir, 'parameters.invest.json')
+    try:
+        model_id = datastack.extract_parameter_set(json_path).model_id
+    except Exception as error:
+        raise ProcessorExecuteError(
+            1, f'Error when parsing JSON datastack:\n{str(error)}')
+
+    return json_path, model_id

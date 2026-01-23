@@ -89,22 +89,8 @@ class ValidateProcessor(BaseProcessor):
         Returns:
             string contents of the script
         """
-        extracted_datastack_dir = os.path.join(workspace_dir, 'datastack')
-        download_and_extract_datastack(datastack_url, extracted_datastack_dir)
-
-        # Parse the extracted datastack JSON. Datastack archives created in the
-        # workbench should have the JSON file named parameters.invest.json.
-        json_path = os.path.join(extracted_datastack_dir, 'parameters.invest.json')
-        try:
-            model_id = datastack.extract_parameter_set(json_path).model_id
-        except Exception as error:
-            raise ProcessorExecuteError(
-                1, f'Error when parsing JSON datastack:\n{str(error)}')
-
-        # Create a workspace directory
-        workspace_root = os.path.abspath('workspaces')
-        workspace_dir = os.path.join(workspace_root, f'{model_id}_{time.time()}')
-
+        json_path, _ = download_and_extract_datastack(
+            datastack_url, os.path.join(workspace_dir, 'datastack'))
         return textwrap.dedent(f"""\
             #!/bin/sh
             #SBATCH --time=10
