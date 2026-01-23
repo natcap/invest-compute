@@ -118,13 +118,6 @@ class SlurmManager(BaseManager):
         if not status:
             return None
 
-        if status not in {'PENDING', 'RUNNING'}:
-            workspace_dir = self.get_job_metadata(job_id)['workdir']
-            print(workspace_dir, os.listdir(workspace_dir))
-            if not os.path.exists(os.path.join(workspace_dir, 'job_complete_token')):
-                LOGGER.debug('Job finished but post processing not yet complete.')
-                return JobStatus.running
-
         # Map slurm job statuses to OGC Process job statuses
         # According to the Processes standard, job statuses may be
         # 'accepted', 'running', 'successful', 'failed', or 'dismissed'.
@@ -235,6 +228,14 @@ class SlurmManager(BaseManager):
         :returns: `dict` of job result
         """
         job_metadata = self.get_job_metadata(job_id)
+        job_status = self.get_job_status(job_id)
+        if job_status in {JobStatus.failed, JobStatus.dismissed, JobStatus.successful}:
+            workspace_dir = self.get_job_metadata(job_id)['workdir']
+            print(workspace_dir, os.listdir(workspace_dir))
+            if not os.path.exists(os.path.join(workspace_dir, 'job_complete_token')):
+                LOGGER.debug('Job finished but post processing not yet complete.')
+                job_status = JobStatus.running
+
         return {
             "type": "process",
             "identifier": job_id,
@@ -373,6 +374,7 @@ class SlurmManager(BaseManager):
                 LOGGER.debug(f'Status of slurm job {job_id}: {status}')
                 if status in {JobStatus.successful, JobStatus.failed, JobStatus.dismissed}:
                     break
+                time.sleep(5)
 
             # get the exit code from the job data in sacct
             # is returned in the format <exit code>:<signal number>
