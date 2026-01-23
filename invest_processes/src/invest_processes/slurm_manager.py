@@ -411,7 +411,7 @@ class SlurmManager(BaseManager):
             finally:
                 # write token to workspace directory
                 # this marks that post processing is complete
-                with open(os.path.join(workspace_dir, 'job_complete_token')) as file:
+                with open(os.path.join(workspace_dir, 'job_complete_token'), 'w') as file:
                     file.write('job complete')
 
     def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
