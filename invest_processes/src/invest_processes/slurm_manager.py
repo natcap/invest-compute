@@ -408,10 +408,12 @@ class SlurmManager(BaseManager):
                 # user can access the slurm related files and any partial results.
                 LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
                 upload_directory_to_bucket(workspace_dir)
+                print('finished uploading directory')
             finally:
                 # write token to workspace directory
                 # this marks that post processing is complete
                 with open(os.path.join(workspace_dir, 'job_complete_token'), 'w') as file:
+                    print('writing job complete token to', os.path.join(workspace_dir, 'job_complete_token'))
                     file.write('job complete')
 
     def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
