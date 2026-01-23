@@ -410,6 +410,7 @@ class SlurmManager(BaseManager):
                 # user can access the slurm related files and any partial results.
                 LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
                 upload_directory_to_bucket(workspace_dir)
+                time.sleep(60)
                 print('finished uploading directory')
             finally:
                 # write token to workspace directory
