@@ -92,9 +92,11 @@ class PyGeoAPIServerTests(unittest.TestCase):
         while True:
             job_response = json.loads(self.client.get(
                 f'/jobs/{execution_response["id"]}').get_data(as_text=True))
+            print('job response:', job_response)
             self.assertNotIn(job_response['status'], {'failed', 'dismissed'})
             if job_response['status'] == 'successful':
                 break
+            time.sleep(5)
 
         results_response = json.loads(self.client.get(
             f'/jobs/{execution_response["id"]}/results?f=json').get_data(
@@ -141,9 +143,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
         while True:
             job_response = json.loads(self.client.get(
                 f'/jobs/{execution_response["id"]}').get_data(as_text=True))
+            print('job response:', job_response)
             if job_response['status'] in {'successful', 'failed', 'dismissed'}:
                 break
-
             time.sleep(5)
 
         results_response = json.loads(self.client.get(
