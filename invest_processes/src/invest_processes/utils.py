@@ -2,6 +2,7 @@ import os
 import tarfile
 import tempfile
 
+from natcap.invest import datastack
 from pygeoapi.process.base import ProcessorExecuteError
 import requests
 

@@ -5,7 +5,6 @@ import textwrap
 import time
 
 from invest_processes.utils import download_and_extract_datastack
-from natcap.invest import datastack
 from pygeoapi.process.base import BaseProcessor, ProcessorExecuteError
 
 LOGGER = logging.getLogger(__name__)
