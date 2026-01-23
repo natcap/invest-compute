@@ -118,6 +118,13 @@ class SlurmManager(BaseManager):
         if not status:
             return None
 
+        if status not in {'PENDING', 'RUNNING'}:
+            workspace_dir = self.get_job_metadata(job_id)['results_path']
+            print(workspace_dir, os.listdir(workspace_dir))
+            if not os.path.exists(os.path.join(workspace_dir, 'job_complete_token')):
+                LOGGER.debug('Job finished but post processing not yet complete.')
+                return JobStatus.running
+
         # Map slurm job statuses to OGC Process job statuses
         # According to the Processes standard, job statuses may be
         # 'accepted', 'running', 'successful', 'failed', or 'dismissed'.
@@ -396,10 +403,16 @@ class SlurmManager(BaseManager):
             LOGGER.exception(err)
 
         finally:
-            # Upload the workspace even if something went wrong, so that the
-            # user can access the slurm related files and any partial results.
-            LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
-            upload_directory_to_bucket(workspace_dir)
+            try:
+                # Upload the workspace even if something went wrong, so that the
+                # user can access the slurm related files and any partial results.
+                LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
+                upload_directory_to_bucket(workspace_dir)
+            finally:
+                # write token to workspace directory
+                # this marks that post processing is complete
+                with open(os.path.join(workspace_dir), 'job_complete_token') as file:
+                    file.write('job complete')
 
     def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
                               subscriber=None, requested_response=RequestedResponse.raw.value):
