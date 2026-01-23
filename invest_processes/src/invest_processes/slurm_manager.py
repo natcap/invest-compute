@@ -37,7 +37,8 @@ def upload_directory_to_bucket(dir_path):
     for path in dir_path.rglob('*'):
         if not path.is_file():
             continue
-        rel_path = path.relative_to(dir_path.parent)
+        rel_path = str(path.relative_to(dir_path.parent))
+        print('uploading', rel_path)
         BUCKET.blob(rel_path).upload_from_filename(path)
         LOGGER.debug(f'Uploaded {path} to gs://{BUCKET_NAME}/{rel_path}')
 
