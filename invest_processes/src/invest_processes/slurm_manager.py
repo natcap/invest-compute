@@ -119,7 +119,7 @@ class SlurmManager(BaseManager):
             return None
 
         if status not in {'PENDING', 'RUNNING'}:
-            workspace_dir = self.get_job_metadata(job_id)['results_path']
+            workspace_dir = self.get_job_metadata(job_id)['workdir']
             print(workspace_dir, os.listdir(workspace_dir))
             if not os.path.exists(os.path.join(workspace_dir, 'job_complete_token')):
                 LOGGER.debug('Job finished but post processing not yet complete.')
