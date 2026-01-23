@@ -229,7 +229,6 @@ class SlurmManager(BaseManager):
         """
         job_metadata = self.get_job_metadata(job_id)
         job_status = self.get_job_status(job_id)
-        print('/jobs/', job_status)
         if job_status in {JobStatus.failed, JobStatus.dismissed, JobStatus.successful}:
             workspace_dir = self.get_job_metadata(job_id)['workdir']
             print(workspace_dir, os.listdir(workspace_dir))
