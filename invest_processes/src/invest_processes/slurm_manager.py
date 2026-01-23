@@ -229,12 +229,15 @@ class SlurmManager(BaseManager):
         """
         job_metadata = self.get_job_metadata(job_id)
         job_status = self.get_job_status(job_id)
+        print('/jobs/', job_status)
         if job_status in {JobStatus.failed, JobStatus.dismissed, JobStatus.successful}:
             workspace_dir = self.get_job_metadata(job_id)['workdir']
             print(workspace_dir, os.listdir(workspace_dir))
             if not os.path.exists(os.path.join(workspace_dir, 'job_complete_token')):
                 LOGGER.debug('Job finished but post processing not yet complete.')
                 job_status = JobStatus.running
+            else:
+                LOGGER.debug('Job and post processing completed.')
 
         return {
             "type": "process",
@@ -245,7 +248,7 @@ class SlurmManager(BaseManager):
             "started": self.get_job_start_time(job_id),
             "finished": self.get_job_end_time(job_id),
             "updated": self.get_job_submit_time(job_id),
-            "status": self.get_job_status(job_id).value,
+            "status": job_status.value,
             "mimetype": "application/json",
             "message": "",
             "progress": -1
