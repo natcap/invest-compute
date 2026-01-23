@@ -33,20 +33,13 @@ def upload_directory_to_bucket(dir_path):
     Returns:
         None
     """
-    # get the parent directory of dir_path
-    parent_dir = os.path.split(os.path.normpath(dir_path))[0]
-
-    for sub_dir, _, file_names in os.walk(dir_path):
-        for file_name in file_names:
-            # absolute path including the full path to the directory
-            abs_path = os.path.join(sub_dir, file_name)
-
-            # relative path starting from the given directory
-            rel_path = os.path.relpath(abs_path, start=parent_dir)
-
-            blob = BUCKET.blob(rel_path)
-            blob.upload_from_filename(abs_path)
-            LOGGER.debug(f'Uploaded {abs_path} to gs://{BUCKET_NAME}/{rel_path}')
+    dir_path = Path(dir_path)
+    for path in dir_path.rglob('*'):
+        if not path.is_file():
+            continue
+        rel_path = path.relative_to(dir_path.parent)
+        BUCKET.blob(rel_path).upload_from_filename(path)
+        LOGGER.debug(f'Uploaded {path} to gs://{BUCKET_NAME}/{rel_path}')
 
 
 class SlurmManager(BaseManager):
@@ -411,10 +404,16 @@ class SlurmManager(BaseManager):
 
         finally:
             try:
+                bucket_gs_url = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
+                results_json_path = os.path.join(workspace_dir, 'results.json')
+                with open(results_json_path, 'w') as results_json:
+                    results_json.write(json.dumps({'workspace_url': bucket_gs_url}))
+
                 # Upload the workspace even if something went wrong, so that the
                 # user can access the slurm related files and any partial results.
                 LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
                 upload_directory_to_bucket(workspace_dir)
+
             finally:
                 LOGGER.debug('Creating job complete token')
                 # write token to workspace directory
@@ -553,11 +552,6 @@ class SlurmManager(BaseManager):
         LOGGER.debug('Content of slurm script to be submitted:\n')
         with open(script_path) as fp:
             LOGGER.debug(fp.read())
-
-        bucket_gs_url = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
-        results_json_path = os.path.join(workspace_dir, 'results.json')
-        with open(results_json_path, 'w') as fp:
-            fp.write(json.dumps({'workspace_url': bucket_gs_url}))
 
         job_metadata = json.dumps({
             'workspace_dir': workspace_dir,
