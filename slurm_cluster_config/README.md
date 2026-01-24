@@ -3,6 +3,8 @@
 This repo uses Terraform (via Google Cluster Toolkit) and Ansible to define the infrastructure and configuration needed to run an invest compute cluster. Our goal is for users to be able to easily deploy an equivalent invest compute cluster in their own GCP project. This way, users may make use of the invest compute services while paying for the infrastructure from their own funding.
 
 ### Deployment workflow
+These steps are meant to be run on your local dev machine.
+
 Install Google Cluster Toolkit following the instructions:
 https://docs.cloud.google.com/cluster-toolkit/docs/setup/configure-environment
 The following steps assume that the resulting executable exists at `~/cluster-toolkit/gcluster`. All the commands below are run on your development machine, it is not necessary to directly run anything on the cluster instances.
