@@ -20,6 +20,8 @@ info:
     - geospatial
     - data
     - api
+security:
+  - ApiKeyAuth: []  # require authentication with api key for all requests
 servers:
   - description: pygeoapi provides an API to geospatial data
     url: http://localhost:5000
@@ -41,10 +43,13 @@ tags:
 x-google-api-management:
   backends:
     invest_compute_backend:
-      # this needs to match the DNS record created in load_balancer.tf
-      address: "http://lb.example-invest-compute"
-      disableAuth: true
-      # Optional: jwt_audience, deadline, etc.
+      # 1. Point to the Cloud Run Bridge URL
+      address: ${backend_url}
+      deadline: 15.0
+
+      # 2. ENABLE AUTHENTICATION (The Gateway signs the request)
+      jwt_audience: ${backend_url}
+
 paths:
   /:
     get:
@@ -936,3 +941,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/link-2'
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key

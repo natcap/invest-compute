@@ -34,12 +34,18 @@ deployment_groups:
     source: modules/network/vpc
     settings:
       firewall_rules:
-      - name: ssh-my-machine
+      - name: fw-allow-ssh
         direction: INGRESS
         ranges: [0.0.0.0/0]
         allow:
         - protocol: tcp
           ports: [22]
+      - name: fw-allow-health-checks
+        direction: INGRESS
+        ranges: [35.191.0.0/16, 130.211.0.0/22]
+        allow:
+        - protocol: tcp
+          ports: [5000]
 
   # Private Service Access (PSA) requires the compute.networkAdmin role which is
   # included in the Owner role, but not Editor.
