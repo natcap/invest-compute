@@ -321,38 +321,16 @@ resource "google_compute_instance_group" "unmanaged_group" {
 # 3. LOAD BALANCER COMPONENTS
 # ------------------------------------------------------------------------------
 
-# Health Check - Monitors if instances are responsive
-resource "google_compute_health_check" "default" {
-  name               = "http-health-check"
-  timeout_sec        = 1
-  check_interval_sec = 1
+# # Health Check - Monitors if instances are responsive
+# resource "google_compute_health_check" "default" {
+#   name               = "http-health-check"
+#   timeout_sec        = 1
+#   check_interval_sec = 1
 
-  http_health_check {
-    port = 5000
-  }
-}
-
-# Backend Service - Defines how traffic is distributed to the group
-resource "google_compute_backend_service" "default" {
-  name          = "http-backend-service"
-  protocol      = "HTTP"
-  port_name     = "http" # Matches named_port in the Instance Group
-  timeout_sec   = 10
-  health_checks = [google_compute_health_check.default.id]
-
-  backend {
-    group           = google_compute_instance_group.unmanaged_group.self_link
-    balancing_mode  = "UTILIZATION"
-    max_utilization = 0.8
-    capacity_scaler = 1.0
-  }
-
-  iap {
-    enabled              = true
-    # oauth2_client_id     = var.iap_client_id
-    # oauth2_client_secret = var.iap_client_secret
-  }
-}
+#   http_health_check {
+#     port = 5000
+#   }
+# }
 
 # URL Map - Routes incoming requests to the Backend Service
 # "http-lb-url-map" appears as a "Classic Application Load Balancer"
@@ -361,7 +339,7 @@ resource "google_compute_backend_service" "default" {
 # TODO: use HTTPS
 resource "google_compute_url_map" "default" {
   name            = "http-lb-url-map"
-  default_service = google_compute_backend_service.default.id
+  default_service = google_compute_backend_service.gateway_backend.id
 }
 
 # # Target Proxy - Termination point for HTTP connections
@@ -396,39 +374,39 @@ resource "google_compute_global_forwarding_rule" "default" {
 #    Required for the Google Load Balancer to talk to your instances.
 # ------------------------------------------------------------------------------
 
-resource "google_compute_firewall" "allow_lb_health_check" {
-  name    = "allow-lb-health-check"
-  network = "hpc-slurm-net"
+# resource "google_compute_firewall" "allow_lb_health_check" {
+#   name    = "allow-lb-health-check"
+#   network = "hpc-slurm-net"
 
-  allow {
-    protocol = "tcp"
-    ports    = ["5000"]
-  }
+#   allow {
+#     protocol = "tcp"
+#     ports    = ["5000"]
+#   }
 
-  # These are the specific IP ranges Google uses for health checks
-  source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
-  target_tags   = ["http-server"]
-}
+#   # These are the specific IP ranges Google uses for health checks
+#   source_ranges = ["130.211.0.0/22", "35.191.0.0/16"]
+#   target_tags   = ["http-server"]
+# }
 
 
 # IAP #####################################
 
-resource "google_project_service" "iap_service" {
-  project = var.project_id
-  service = "iap.googleapis.com"
-  disable_on_destroy = false
-}
+# resource "google_project_service" "iap_service" {
+#   project = var.project_id
+#   service = "iap.googleapis.com"
+#   disable_on_destroy = false
+# }
 
-resource "google_iap_web_backend_service_iam_member" "iap_access" {
-  project = var.project_id
-  web_backend_service = google_compute_backend_service.default.name
+# resource "google_iap_web_backend_service_iam_member" "iap_access" {
+#   project = var.project_id
+#   web_backend_service = google_compute_backend_service.default.name
 
-  # Role required to access the app
-  role = "roles/iap.httpsResourceAccessor"
+#   # Role required to access the app
+#   role = "roles/iap.httpsResourceAccessor"
 
-  # The user you want to allow (change to your email)
-  member = "user:esoth@stanford.edu"
-}
+#   # The user you want to allow (change to your email)
+#   member = "user:esoth@stanford.edu"
+# }
 
 
 # TODO:
