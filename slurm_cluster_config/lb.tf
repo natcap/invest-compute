@@ -48,16 +48,9 @@ resource "google_cloud_run_v2_service" "proxy" {
     service_account = google_service_account.cloud_run_sa.email
 
     containers {
-      image = "nginx:alpine" # Lightweight proxy
+      image = "nginx:alpine"
 
-      # We inject a simple Nginx config to proxy pass to the Internal LB
-      # Note: Cloud Run listens on port 8080 by default
-      env {
-        name  = "NGINX_PORT"
-        value = "8080"
-      }
-
-      # Mount the config file (defined below)
+      # Mount the config volume
       volume_mounts {
         name       = "nginx-conf"
         mount_path = "/etc/nginx/conf.d"
@@ -65,12 +58,11 @@ resource "google_cloud_run_v2_service" "proxy" {
     }
 
     annotations = {
-      # This acts as a trigger: whenever the secret version ID changes,
-      # this value changes, forcing Terraform to redeploy the service.
+      # this causes terraform to redeploy the service whenever the secret changes
       force-update-key = google_secret_manager_secret_version.nginx_config_data.name
     }
 
-    # Mount the config
+    # Create a volume containing the config defined below
     volumes {
       name = "nginx-conf"
       secret {
@@ -93,7 +85,10 @@ resource "google_cloud_run_v2_service" "proxy" {
   }
 }
 
-# 3. Define the Nginx Config (tore as Secret for simplicity in TF)
+# Define the nginx config
+# Though the contents are not really secret, storing the config data
+# as a Secret is a convenient way to make it accessible as a volume
+# in the Cloud Run service.
 resource "google_secret_manager_secret" "nginx_config" {
   secret_id = "proxy-nginx-config"
   replication {
@@ -105,6 +100,8 @@ resource "google_secret_manager_secret_version" "nginx_config_data" {
   secret = google_secret_manager_secret.nginx_config.id
 
   # This config listens on 8080 and proxies to the internal server
+  # Cloud Run listens on port 8080 by default
+  # TODO: get the interal server IP dynamically in terraform
   secret_data = <<EOF
 server {
     listen 8080;
@@ -161,6 +158,7 @@ resource "google_compute_backend_service" "gateway_backend" {
 
 # -----------------------------------------------------------------------
 # API Gateway
+#
 
 # Create a Service Account for the API Gateway
 resource "google_service_account" "gateway_sa" {
