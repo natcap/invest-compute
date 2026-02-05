@@ -18,7 +18,7 @@ def download_and_extract_datastack(datastack_url, extracted_datastack_dir):
         tuple of extracted json datastack path and model id
     """
     # Download the datastack from the given URL and
-    response = requests.get(datastack_url)
+    response = requests.get(datastack_url, stream=True)
     if response.status_code != 200:
         raise ProcessorExecuteError(
             "Failed to download datastack file. Request returned " +
@@ -28,7 +28,9 @@ def download_and_extract_datastack(datastack_url, extracted_datastack_dir):
         # save the datastack archive to a local temp file
         tgz_path = os.path.join(temp_dir, 'datastack.tgz')
         with open(tgz_path, 'wb') as tgz:
-            tgz.write(response.content)
+            # chunk_size defaults to 1 byte which is unnecessarily small
+            for chunk in response.iter_content(chunk_size=1024):
+                tgz.write(chunk)
 
         # extract the TGZ archive to a local directory
         try:
