@@ -231,7 +231,7 @@ class SlurmManager(BaseManager):
         if job_status in {JobStatus.failed, JobStatus.dismissed, JobStatus.successful}:
             workspace_dir = self.get_job_metadata(job_id)['workspace_dir']
             if not (Path(workspace_dir) / 'job_complete_token').exists():
-                LOGGER.debug('Job finished but  not yet complete.')
+                LOGGER.debug('Job finished but not yet complete.')
                 job_status = JobStatus.running
             else:
                 LOGGER.debug('Job and post processing completed.')
