@@ -43,13 +43,9 @@ tags:
 x-google-api-management:
   backends:
     invest_compute_backend:
-      # 1. Point to the Cloud Run Bridge URL
+      # point to the Cloud Run service URL
+      # this template placeholder gets filled in by lb.tf
       address: ${backend_url}
-      deadline: 15.0
-
-      # 2. ENABLE AUTHENTICATION (The Gateway signs the request)
-      jwt_audience: ${backend_url}
-
 paths:
   /:
     get:
