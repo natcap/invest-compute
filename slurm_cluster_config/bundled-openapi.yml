@@ -1,0 +1,938 @@
+openapi: 3.0.2
+info:
+  contact:
+    name: Natural Capital Project
+    url: https://naturalcapitalproject.stanford.edu/
+    x-ogc-serviceContact:
+      addresses: []
+      emails:
+        - value: natcap-software@lists.stanford.edu
+      hoursOfService: pointOfContact
+      name: Natural Capital Project software team
+  description: pygeoapi provides an API to geospatial data
+  license:
+    name: Apache-2.0 license
+    url: https://github.com/natcap/invest?tab=Apache-2.0-1-ov-file#readme
+  termsOfService: https://github.com/natcap/invest?tab=Apache-2.0-1-ov-file#readme
+  title: pygeoapi InVEST
+  version: 0.21.0
+  x-keywords:
+    - geospatial
+    - data
+    - api
+servers:
+  - description: pygeoapi provides an API to geospatial data
+    url: http://localhost:5000
+tags:
+  - description: pygeoapi provides an API to geospatial data
+    externalDocs:
+      description: information
+      url: https://example.org
+    name: server
+  - name: coverages
+  - name: edr
+  - name: records
+  - name: features
+  - name: maps
+  - name: processes
+  - name: jobs
+  - name: tiles
+  - name: stac
+x-google-api-management:
+  backends:
+    invest_compute_backend:
+      # this needs to match the DNS record created in load_balancer.tf
+      address: "http://lb.example-invest-compute"
+      disableAuth: true
+      # Optional: jwt_audience, deadline, etc.
+paths:
+  /:
+    get:
+      x-google-backend: invest_compute_backend
+      description: Landing page
+      operationId: getLandingPage
+      parameters:
+        - $ref: '#/components/parameters/f'
+        - $ref: '#/components/parameters/lang'
+      responses:
+        '200':
+          $ref: '#/components/responses/LandingPage'
+        '400':
+          $ref: '#/components/responses/InvalidParameter'
+        '500':
+          $ref: '#/components/responses/ServerError'
+      summary: Landing page
+      tags:
+        - server
+  /collections:
+    get:
+      description: Collections
+      operationId: getCollections
+      parameters:
+        - $ref: '#/components/parameters/f'
+        - $ref: '#/components/parameters/lang'
+      responses:
+        '200':
+          $ref: '#/components/responses/LandingPage'
+        '400':
+          $ref: '#/components/responses/InvalidParameter'
+        '500':
+          $ref: '#/components/responses/ServerError'
+      summary: Collections
+      tags:
+        - server
+  /conformance:
+    get:
+      description: API conformance definition
+      operationId: getConformanceDeclaration
+      parameters:
+        - $ref: '#/components/parameters/f'
+        - $ref: '#/components/parameters/lang'
+      responses:
+        '200':
+          $ref: '#/components/responses/LandingPage'
+        '400':
+          $ref: '#/components/responses/InvalidParameter'
+        '500':
+          $ref: '#/components/responses/ServerError'
+      summary: API conformance definition
+      tags:
+        - server
+  /jobs:
+    get:
+      description: Retrieve a list of jobs
+      operationId: getJobs
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/default'
+      summary: Retrieve jobs list
+      tags:
+        - jobs
+  /jobs/{jobId}:
+    delete:
+      description: Cancel / delete job
+      operationId: deleteJob
+      parameters:
+        - description: job identifier
+          in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          $ref: '#/components/responses/204'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/default'
+      summary: Cancel / delete job
+      tags:
+        - jobs
+    get:
+      description: Retrieve job details
+      operationId: getJob
+      parameters:
+        - description: job identifier
+          in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/f'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/default'
+      summary: Retrieve job details
+      tags:
+        - jobs
+  /jobs/{jobId}/results:
+    get:
+      description: Retrieve job results
+      operationId: getJobResults
+      parameters:
+        - description: job identifier
+          in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/f'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/default'
+      summary: Retrieve job results
+      tags:
+        - jobs
+  /openapi:
+    get:
+      description: This document
+      operationId: getOpenapi
+      parameters:
+        - $ref: '#/components/parameters/f'
+        - $ref: '#/components/parameters/lang'
+        - description: UI to render the OpenAPI document
+          explode: false
+          in: query
+          name: ui
+          required: false
+          schema:
+            default: swagger
+            enum:
+              - swagger
+              - redoc
+            type: string
+          style: form
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        '400':
+          $ref: '#/components/responses/InvalidParameter'
+        default:
+          $ref: '#/components/responses/default'
+      summary: This document
+      tags:
+        - server
+  /processes:
+    get:
+      description: Processes
+      operationId: getProcesses
+      parameters:
+        - $ref: '#/components/parameters/f'
+      responses:
+        '200':
+          $ref: '#/components/responses/ProcessList'
+        default:
+          $ref: '#/components/responses/default'
+      summary: Processes
+      tags:
+        - server
+  /processes/execute:
+    get:
+      description: A process that executes an InVEST model.
+      operationId: describeExecuteProcess
+      parameters:
+        - $ref: '#/components/parameters/f'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        default:
+          $ref: '#/components/responses/default'
+      summary: Get process metadata
+      tags:
+        - execute
+  /processes/execute/execution:
+    post:
+      description: A process that executes an InVEST model.
+      operationId: executeExecuteJob
+      parameters:
+        - description: Indicates client preferences, including whether the client is capable of asynchronous processing.
+          in: header
+          name: Prefer
+          required: false
+          schema:
+            enum:
+              - respond-async
+            type: string
+      requestBody:
+        content:
+          application/json:
+            example:
+              inputs:
+                datastack_path: /Users/emily/invest/data/Carbon/carbon_willamette.invs.json
+            schema:
+              $ref: '#/components/schemas/execute'
+        description: Mandatory execute request JSON
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: string
+          description: Process output schema
+        '201':
+          $ref: '#/components/responses/ExecuteAsync'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError-2'
+        default:
+          $ref: '#/components/responses/default'
+      summary: Process InVEST Execute execution
+      tags:
+        - execute
+  /processes/validate:
+    get:
+      description: A process that validates inputs to an InVEST model.
+      operationId: describeValidateProcess
+      parameters:
+        - $ref: '#/components/parameters/f'
+      responses:
+        '200':
+          $ref: '#/components/responses/200'
+        default:
+          $ref: '#/components/responses/default'
+      summary: Get process metadata
+      tags:
+        - validate
+  /processes/validate/execution:
+    post:
+      description: A process that validates inputs to an InVEST model.
+      operationId: executeValidateJob
+      parameters:
+        - description: Indicates client preferences, including whether the client is capable of asynchronous processing.
+          in: header
+          name: Prefer
+          required: false
+          schema:
+            enum:
+              - respond-async
+            type: string
+      requestBody:
+        content:
+          application/json:
+            example:
+              inputs:
+                datastack_path: /Users/emily/invest/data/Carbon/carbon_willamette.invs.json
+            schema:
+              $ref: '#/components/schemas/execute'
+        description: Mandatory execute request JSON
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  properties:
+                    error_message:
+                      type: string
+                    input_ids:
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                type: array
+          description: Process output schema
+        '201':
+          $ref: '#/components/responses/ExecuteAsync'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError-2'
+        default:
+          $ref: '#/components/responses/default'
+      summary: Process InVEST Validate execution
+      tags:
+        - validate
+components:
+  parameters:
+    bbox:
+      description: Only features that have a geometry that intersects the bounding box are selected.The bounding box is provided as four or six numbers, depending on whether the coordinate reference system includes a vertical axis (height or depth).
+      explode: false
+      in: query
+      name: bbox
+      required: false
+      schema:
+        items:
+          type: number
+        maxItems: 6
+        minItems: 4
+        type: array
+      style: form
+    bbox-crs:
+      description: Indicates the coordinate reference system for the given bbox coordinates.
+      explode: false
+      in: query
+      name: bbox-crs
+      required: false
+      schema:
+        format: uri
+        type: string
+      style: form
+    bbox-crs-epsg:
+      description: Indicates the EPSG for the given bbox coordinates.
+      explode: false
+      in: query
+      name: bbox-crs
+      required: false
+      schema:
+        default: 4326
+        type: integer
+      style: form
+    crs:
+      description: Indicates the coordinate reference system for the results.
+      explode: false
+      in: query
+      name: crs
+      required: false
+      schema:
+        format: uri
+        type: string
+      style: form
+    f:
+      description: The optional f parameter indicates the output format which the server shall provide as part of the response document.  The default format is GeoJSON.
+      explode: false
+      in: query
+      name: f
+      required: false
+      schema:
+        default: json
+        enum:
+          - json
+          - html
+          - jsonld
+        type: string
+      style: form
+    lang:
+      description: The optional lang parameter instructs the server return a response in a certain language, if supported.  If the language is not among the available values, the Accept-Language header language will be used if it is supported. If the header is missing, the default server language is used. Note that providers may only support a single language (or often no language at all), that can be different from the server language.  Language strings can be written in a complex (e.g. "fr-CA,fr;q=0.9,en-US;q=0.8,en;q=0.7"), simple (e.g. "de") or locale-like (e.g. "de-CH" or "fr_BE") fashion.
+      in: query
+      name: lang
+      required: false
+      schema:
+        default: en-US
+        enum:
+          - en-US
+        type: string
+    offset:
+      description: The optional offset parameter indicates the index within the result set from which the server shall begin presenting results in the response document.  The first element has an index of 0 (default).
+      explode: false
+      in: query
+      name: offset
+      required: false
+      schema:
+        default: 0
+        minimum: 0
+        type: integer
+      style: form
+    resourceId:
+      description: Configuration resource identifier
+      in: path
+      name: resourceId
+      required: true
+      schema:
+        default: execute
+        type: string
+    skipGeometry:
+      description: This option can be used to skip response geometries for each feature.
+      explode: false
+      in: query
+      name: skipGeometry
+      required: false
+      schema:
+        default: false
+        type: boolean
+      style: form
+    vendorSpecificParameters:
+      description: Additional "free-form" parameters that are not explicitly defined
+      in: query
+      name: vendorSpecificParameters
+      schema:
+        additionalProperties: true
+        type: object
+      style: form
+  responses:
+    '200':
+      description: successful operation
+    '204':
+      description: no content
+    Queryables:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/queryables'
+      description: successful queryables operation
+    default:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/exception-2'
+      description: Unexpected error
+    LandingPage:
+      description: |-
+        The landing page provides links to the API definition
+        (link relations `service-desc` and `service-doc`),
+        the Conformance declaration (path `/conformance`,
+        link relation `conformance`), and the Feature
+        Collections (path `/collections`, link relation
+        `data`).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/landingPage'
+          example:
+            title: Buildings in Bonn
+            description: Access to data about buildings in the city of Bonn via a Web API that conforms to the OGC API Features specification.
+            links:
+              - href: http://data.example.org/
+                rel: self
+                type: application/json
+                title: this document
+              - href: http://data.example.org/api
+                rel: service-desc
+                type: application/vnd.oai.openapi+json;version=3.0
+                title: the API definition
+              - href: http://data.example.org/api.html
+                rel: service-doc
+                type: text/html
+                title: the API documentation
+              - href: http://data.example.org/conformance
+                rel: conformance
+                type: application/json
+                title: OGC API conformance classes implemented by this server
+              - href: http://data.example.org/collections
+                rel: data
+                type: application/json
+                title: Information about the feature collections
+        text/html:
+          schema:
+            type: string
+    InvalidParameter:
+      description: A query parameter has an invalid value.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/exception'
+        text/html:
+          schema:
+            type: string
+    ServerError:
+      description: A server error occurred.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/exception'
+        text/html:
+          schema:
+            type: string
+    NotFound:
+      description: The requested URI was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/exception-2'
+        text/html:
+          schema:
+            type: string
+    ProcessList:
+      description: Information about the available processes
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/processList'
+    ExecuteAsync:
+      description: Started asynchronous execution. Created job.
+      headers:
+        Location:
+          schema:
+            type: string
+          description: URL to check the status of the execution/job.
+        Preference-Applied:
+          schema:
+            type: string
+          description: The preference applied to execute the process asynchronously (see. RFC 2740).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/statusInfo'
+    ServerError-2:
+      description: A server error occurred.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/exception-2'
+        text/html:
+          schema:
+            type: string
+  schemas:
+    queryable:
+      properties:
+        description:
+          description: a human-readable narrative describing the queryable
+          type: string
+        language:
+          default: en
+          description: the language used for the title and description
+          type: string
+        queryable:
+          description: the token that may be used in a CQL predicate
+          type: string
+        title:
+          description: a human readable title for the queryable
+          type: string
+        type:
+          description: the data type of the queryable
+          type: string
+        type-ref:
+          description: a reference to the formal definition of the type
+          format: url
+          type: string
+      required:
+        - queryable
+        - type
+      type: object
+    queryables:
+      properties:
+        queryables:
+          items:
+            $ref: '#/components/schemas/queryable'
+          type: array
+      required:
+        - queryables
+      type: object
+    link:
+      type: object
+      required:
+        - href
+      properties:
+        href:
+          type: string
+          example: http://data.example.com/buildings/123
+        rel:
+          type: string
+          example: alternate
+        type:
+          type: string
+          example: application/geo+json
+        hreflang:
+          type: string
+          example: en
+        title:
+          type: string
+          example: Trierer Strasse 70, 53115 Bonn
+        length:
+          type: integer
+    landingPage:
+      type: object
+      required:
+        - links
+      properties:
+        title:
+          type: string
+          example: Buildings in Bonn
+        description:
+          type: string
+          example: Access to data about buildings in the city of Bonn via a Web API that conforms to the OGC API Features specification.
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/link'
+    exception:
+      type: object
+      description: 'Information about the exception: an error code plus an optional description.'
+      required:
+        - code
+      properties:
+        code:
+          type: string
+        description:
+          type: string
+    exception-2:
+      title: Exception Schema
+      description: JSON schema for exceptions based on RFC 7807
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+      additionalProperties: true
+    metadata:
+      type: object
+      properties:
+        title:
+          type: string
+        role:
+          type: string
+        href:
+          type: string
+    additionalParameter:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+        value:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: number
+              - type: integer
+              - type: array
+                items: {}
+              - type: object
+    descriptionType:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        keywords:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: array
+          items:
+            $ref: '#/components/schemas/metadata'
+        additionalParameters:
+          allOf:
+            - $ref: '#/components/schemas/metadata'
+            - type: object
+              properties:
+                parameters:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/additionalParameter'
+    jobControlOptions:
+      type: string
+      enum:
+        - sync-execute
+        - async-execute
+        - dismiss
+    transmissionMode:
+      type: string
+      enum:
+        - value
+        - reference
+      default: value
+    link-2:
+      type: object
+      required:
+        - href
+      properties:
+        href:
+          type: string
+        rel:
+          type: string
+          example: service
+        type:
+          type: string
+          example: application/json
+        hreflang:
+          type: string
+          example: en
+        title:
+          type: string
+    processSummary:
+      allOf:
+        - $ref: '#/components/schemas/descriptionType'
+        - type: object
+          required:
+            - id
+            - version
+          properties:
+            id:
+              type: string
+            version:
+              type: string
+            jobControlOptions:
+              type: array
+              items:
+                $ref: '#/components/schemas/jobControlOptions'
+            outputTransmission:
+              type: array
+              items:
+                $ref: '#/components/schemas/transmissionMode'
+            links:
+              type: array
+              items:
+                $ref: '#/components/schemas/link-2'
+    processList:
+      type: object
+      required:
+        - processes
+        - links
+      properties:
+        processes:
+          type: array
+          items:
+            $ref: '#/components/schemas/processSummary'
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/link-2'
+    binaryInputValue:
+      type: string
+      format: byte
+    bbox:
+      type: object
+      required:
+        - bbox
+      properties:
+        bbox:
+          type: array
+          oneOf:
+            - minItems: 4
+              maxItems: 4
+            - minItems: 6
+              maxItems: 6
+          items:
+            type: number
+        crs:
+          type: string
+          format: uri
+          default: http://www.opengis.net/def/crs/OGC/1.3/CRS84
+          enum:
+            - http://www.opengis.net/def/crs/OGC/1.3/CRS84
+            - http://www.opengis.net/def/crs/OGC/0/CRS84h
+    inputValueNoObject:
+      oneOf:
+        - type: string
+        - type: number
+        # - type: integer
+        # - type: boolean
+        # - type: array
+        # - $ref: '#/components/schemas/binaryInputValue'
+        # - $ref: '#/components/schemas/bbox'
+    format:
+      type: object
+      properties:
+        mediaType:
+          type: string
+        encoding:
+          type: string
+        schema:
+          oneOf:
+            - type: string
+              format: url
+            - type: object
+    inputValue:
+      oneOf:
+        - $ref: '#/components/schemas/inputValueNoObject'
+        - type: object
+    qualifiedInputValue:
+      allOf:
+        - $ref: '#/components/schemas/format'
+        - type: object
+          required:
+            - value
+          properties:
+            value:
+              $ref: '#/components/schemas/inputValue'
+    inlineOrRefData:
+      oneOf:
+        - $ref: '#/components/schemas/inputValueNoObject'
+        - $ref: '#/components/schemas/qualifiedInputValue'
+        - $ref: '#/components/schemas/link-2'
+    output:
+      type: object
+      properties:
+        format:
+          $ref: '#/components/schemas/format'
+        transmissionMode:
+          $ref: '#/components/schemas/transmissionMode'
+    subscriber:
+      description: |-
+        Optional URIs for callbacks for this job.
+
+        Support for this parameter is not required and the parameter may be
+        removed from the API definition, if conformance class **'callback'**
+        is not listed in the conformance declaration under `/conformance`.
+      type: object
+      required:
+        - successUrl
+      properties:
+        successUri:
+          type: string
+          format: uri
+        inProgressUri:
+          type: string
+          format: uri
+        failedUri:
+          type: string
+          format: uri
+    execute:
+      type: object
+      properties:
+        inputs:
+          additionalProperties:
+            oneOf:
+              - $ref: '#/components/schemas/inlineOrRefData'
+              - type: array
+                items:
+                  $ref: '#/components/schemas/inlineOrRefData'
+        outputs:
+          additionalProperties:
+            $ref: '#/components/schemas/output'
+        response:
+          type: string
+          enum:
+            - raw
+            - document
+          default: raw
+        subscriber:
+          $ref: '#/components/schemas/subscriber'
+    statusCode:
+      type: string
+      nullable: false
+      enum:
+        - accepted
+        - running
+        - successful
+        - failed
+        - dismissed
+    statusInfo:
+      type: object
+      required:
+        - jobID
+        - status
+        - type
+      properties:
+        processID:
+          type: string
+        type:
+          type: string
+          enum:
+            - process
+        jobID:
+          type: string
+        status:
+          $ref: '#/components/schemas/statusCode'
+        message:
+          type: string
+        created:
+          type: string
+          format: date-time
+        started:
+          type: string
+          format: date-time
+        finished:
+          type: string
+          format: date-time
+        updated:
+          type: string
+          format: date-time
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/link-2'

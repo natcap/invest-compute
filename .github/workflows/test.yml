@@ -45,16 +45,103 @@ jobs:
         with:
           fetch-depth: 0 # Fetch complete history for accurate versioning
 
-      - uses: koesterlab/setup-slurm-action@v1
+
+
+      #############################################################
+      # This section copied from koesterlab/setup-slurm-action@v1
+      # their action does not allow modification of slurm conf vars, and we
+      # need to configure `AccountingStoreFlags: job_comment` so that job
+      # comments are stored in the database.
+      #
+      - name: Download slurm ansible roles
+        shell: bash -e {0}
+        run: |
+          ansible-galaxy role install https://github.com/galaxyproject/ansible-slurm/archive/1.0.1.tar.gz
+
+      - name: Apt prerequisites
+        shell: bash -e {0}
+        run: |
+          sudo apt-get update
+          sudo apt-get install retry
+
+      - name: Define slurm playbook
+        uses: 1arp/create-a-file-action@0.2
+        with:
+          file: slurm-playbook.yml
+          content: |
+            - name: Slurm all in One
+              hosts: localhost
+              roles:
+                - role: 1.0.1
+                  become: true
+              vars:
+                  slurm_upgrade: true
+                  slurm_roles: ['controller', 'exec', 'dbd']
+                  slurm_config_dir: /etc/slurm
+                  slurm_config:
+                      ClusterName: cluster
+                      SlurmctldLogFile: /var/log/slurm/slurmctld.log
+                      SlurmctldPidFile: /run/slurmctld.pid
+                      SlurmdLogFile: /var/log/slurm/slurmd.log
+                      SlurmdPidFile: /run/slurmd.pid
+                      SlurmdSpoolDir: /tmp/slurmd # the default /var/lib/slurm/slurmd does not work because of noexec mounting in github actions
+                      StateSaveLocation: /var/lib/slurm/slurmctld
+                      AccountingStorageType: accounting_storage/slurmdbd
+                      AccountingStoreFlags: job_comment
+                      SelectType: select/cons_tres
+                  slurmdbd_config:
+                      StorageType: accounting_storage/mysql
+                      PidFile: /run/slurmdbd.pid
+                      LogFile: /var/log/slurm/slurmdbd.log
+                      StoragePass: root
+                      StorageUser: root
+                      StorageHost: 127.0.0.1 # see https://stackoverflow.com/questions/58222386/github-actions-using-mysql-service-throws-access-denied-for-user-rootlocalh
+                      StoragePort: 8888
+                      DbdHost: localhost
+                  slurm_create_user: yes
+                  slurm_nodes:
+                      - name: localhost
+                        State: UNKNOWN
+                        Sockets: 1
+                        CoresPerSocket: 2
+                        RealMemory: 2000
+                  slurm_user:
+                      comment: "Slurm Workload Manager"
+                      gid: 1002
+                      group: slurm
+                      home: "/var/lib/slurm"
+                      name: slurm
+                      shell: "/bin/bash"
+                      uid: 1002
+
+      - name: Set XDG_RUNTIME_DIR
+        shell: bash -e {0}
+        run: |
+          mkdir -p /tmp/1002-runtime # work around podman issue (https://github.com/containers/podman/issues/13338)
+          echo XDG_RUNTIME_DIR=/tmp/1002-runtime >> $GITHUB_ENV
+
+      - name: Setup slurm
+        shell: bash -e {0}
+        run: |
+          ansible-playbook slurm-playbook.yml || (journalctl -xe && exit 1)
+
+      - name: Add slurm account
+        shell: bash -e {0}
+        run: |
+          sudo retry --times=24 --delay=5 --until=success -- sacctmgr -i create account "Name=runner"
+          sudo retry --times=24 --delay=5 --until=success -- sacctmgr -i create user "Name=runner" "Account=runner"
+      ############################################################
 
       - name: Setup conda environment
         uses: mamba-org/setup-micromamba@v2
         with:
           environment-name: env
+          # pin numpy: https://github.com/natcap/invest/issues/2288
           create-args: >-
             python=3.13
             natcap.invest
             pytest
+            numpy<2.4.0
           condarc: |
             channels:
               - conda-forge
@@ -74,7 +161,9 @@ jobs:
 
       - name: Run tests
         run: |
-          export PYGEOAPI_CONFIG=pygeoapi-config.yml
-          export PYGEOAPI_OPENAPI=openapi.yml
+          which invest
+          invest --version
+          export PYGEOAPI_CONFIG=invest_processes/pygeoapi-config.yml
+          export PYGEOAPI_OPENAPI=invest_processes/openapi.yml
           pygeoapi openapi generate $PYGEOAPI_CONFIG --output-file $PYGEOAPI_OPENAPI
-          pytest --log-cli-level=DEBUG tests/
+          pytest -s --log-cli-level=DEBUG tests/

@@ -56,6 +56,59 @@ terraform plan  # show changes that would be made by apply
 terraform apply  # deploy infrastructure
 ```
 
+## Setting up the API Gateway
+
+Generate the OpenAPI specification:
+```
+export PYGEOAPI_CONFIG=../invest_processes/pygeoapi-config.yml
+export PYGEOAPI_OPENAPI=openapi.yml
+pygeoapi openapi generate $PYGEOAPI_CONFIG --output-file $PYGEOAPI_OPENAPI
+```
+
+The generated openapi.yml contains external references. API Gateway doesn't like that, so we need to bundle it so all references are available locally:
+```
+npm i -g @redocly/cli@latest
+```
+
+One of the referenced OGC API specifications [is invalid](https://github.com/opengeospatial/ogcapi-processes/issues/523).
+To fix this, we have to manually edit the default value. In `bundled-openapi.yml`, replace
+```
+    transmissionMode:
+      type: string
+      enum:
+        - value
+        - reference
+      default:
+        - value
+```
+with
+```
+    transmissionMode:
+      type: string
+      enum:
+        - value
+        - reference
+      default: value
+```
+and replace
+```
+        response:
+          type: string
+          enum:
+            - raw
+            - document
+          default:
+            - raw
+```
+with
+```
+        response:
+          type: string
+          enum:
+            - raw
+            - document
+          default: raw
+```
 
 ## hpc-slurm.yml
 Cluster blueprint file for use with Google Cluster Toolkit.
