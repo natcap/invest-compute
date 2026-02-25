@@ -203,6 +203,13 @@ resource "google_api_gateway_api_config" "api_cfg" {
   }
 }
 
+# Wait for the API Gateway Managed Service to propagate
+resource "time_sleep" "wait_for_api_service_propagation" {
+  create_duration = "60s"
+
+  depends_on = [google_api_gateway_api.api]
+}
+
 # Explicitly enable the service that the API created
 resource "google_project_service" "api_gateway_service" {
   project = var.project_id
@@ -212,6 +219,9 @@ resource "google_project_service" "api_gateway_service" {
 
   # Don't disable this on destroy, or you might get stuck in a dependency loop
   disable_on_destroy = false
+
+  # Wait for the timer to give time for the service to appear
+  depends_on = [time_sleep.wait_for_api_service_propagation]
 }
 
 # Create the API Gateway
@@ -233,8 +243,8 @@ resource "google_api_gateway_gateway" "api_gw" {
 #
 # TODO: Generate separate keys for multiple users
 
-resource "google_apikeys_key" "primary" {
-  name         = "primary-api-key"
+resource "google_apikeys_key" "primary_key" {
+  name         = "primary-key"
   display_name = "My Primary API Key"
   project      = var.project_id
 
@@ -246,7 +256,7 @@ resource "google_apikeys_key" "primary" {
 }
 
 output "api_key" {
-  value     = google_apikeys_key.primary.key_string
+  value     = google_apikeys_key.primary_key.key_string
   sensitive = true
 }
 
