@@ -334,6 +334,69 @@ resource "google_compute_global_forwarding_rule" "default" {
 # TODO:
 # reserve a static external IP address for the load balancer
 
+# -----------------------------------------------------------------------------
+# Testing Infrastructure
+
+# Create a Service Account for Github Actions to allow uploading to bucket
+resource "google_service_account" "github_actions_sa" {
+  account_id   = "github-actions-sa"  # this is referenced in the GHA workflow
+  display_name = "Service Account for Github Actions"
+}
+
+# Give the Service Account permission to create bucket objects
+resource "google_project_iam_member" "github_actions_uploader_binding" {
+  project = var.project_id
+  role    = "roles/storage.objectCreator"
+  member  = "serviceAccount:${google_service_account.github_actions_sa.email}"
+}
+
+# Define the GitHub Organization name as a variable
+variable "github_org" {
+  description = "The GitHub organization name"
+  type        = string
+}
+
+# Create Workload Identity Pool and Provider to authenticate GHA workflows
+resource "google_iam_workload_identity_pool" "github_actions" {
+  workload_identity_pool_id = "github-actions-pool"
+}
+
+resource "google_iam_workload_identity_pool_provider" "github_actions" {
+  workload_identity_pool_id          = google_iam_workload_identity_pool.github_actions.workload_identity_pool_id
+  workload_identity_pool_provider_id = "github-actions"
+  attribute_condition = <<EOT
+    assertion.repository_owner_id == "${var.github_org}"
+EOT
+
+  # Default mappings copied from terraform google provider documentation
+  attribute_mapping = {
+    "google.subject"       = "assertion.sub"
+    "attribute.actor"      = "assertion.actor"
+    "attribute.aud"        = "assertion.aud"
+    "attribute.repository" = "assertion.repository"
+  }
+  oidc {
+    issuer_uri = "https://token.actions.githubusercontent.com"
+  }
+}
+
+# Allow identities from the pool to impersonate the service account
+resource "google_project_iam_member" "github_binding" {
+  project = var.project_id
+  role    = "roles/iam.workloadIdentityUser"
+  member  = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_actions.name}/attribute.repository_owner/${var.github_org}"
+}
+
+output "github_actions_workload_identity_provider_name" {
+  description = "Workload identity provider name to be used in the github actions workflow"
+  value = google_iam_workload_identity_pool_provider.github_actions.name
+}
+
+output "github_actions_service_account_email" {
+  description = "Service account email to be used in the github actions workflow"
+  value = google_service_account.github_actions_sa.email
+}
+
 output "load_balancer_ip" {
   description = "The public IP address of the global load balancer"
   value       = google_compute_global_forwarding_rule.default.ip_address
