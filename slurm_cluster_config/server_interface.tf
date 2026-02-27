@@ -355,6 +355,14 @@ resource "google_storage_bucket" "invest-compute-workspaces" {
   }
 }
 
+# Make bucket public - anyone can view contents
+resource "google_storage_bucket_iam_member" "member" {
+  provider = google
+  bucket   = google_storage_bucket.invest-compute-workspaces.name
+  role     = "roles/storage.objectViewer"
+  member   = "allUsers"
+}
+
 # -----------------------------------------------------------------------------
 # Testing Infrastructure
 
