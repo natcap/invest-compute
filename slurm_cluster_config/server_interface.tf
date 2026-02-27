@@ -101,12 +101,13 @@ resource "google_secret_manager_secret_version" "nginx_config_data" {
 
   # This config listens on 8080 and proxies to the internal server
   # Cloud Run listens on port 8080 by default
+  # No trailing slash on the URL tells it to pass the full path along
   # TODO: get the interal server IP dynamically in terraform
   secret_data = <<EOF
 server {
     listen 8080;
     location / {
-        proxy_pass http://10.0.0.3:5000/;
+        proxy_pass http://10.0.0.3:5000;
     }
 }
 EOF
