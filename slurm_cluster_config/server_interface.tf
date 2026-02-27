@@ -335,6 +335,27 @@ resource "google_compute_global_forwarding_rule" "default" {
 # reserve a static external IP address for the load balancer
 
 # -----------------------------------------------------------------------------
+# Storage Bucket
+#
+# Job workspaces will be uploaded to this bucket. Users can download their
+# results and logs from the bucket.
+resource "google_storage_bucket" "invest-compute-workspaces" {
+  name          = "invest-compute-workspaces"
+  location      = "US"
+  force_destroy = true
+
+  # delete contents older than 3 days
+  lifecycle_rule {
+    condition {
+      age = 3
+    }
+    action {
+      type = "Delete"
+    }
+  }
+}
+
+# -----------------------------------------------------------------------------
 # Testing Infrastructure
 
 # Create a Service Account for Github Actions to allow uploading to bucket
