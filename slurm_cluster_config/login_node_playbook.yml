@@ -19,6 +19,11 @@
     ansible_user: esoth_stanford_edu
 
   tasks:
+    - name: Kill previous server
+      ansible.builtin.shell: |
+        # kill any previous server process running on port 5000
+        fuser -k 5000/tcp || exit 0
+
     - name: Install rsync
       become: true
       ansible.builtin.shell: |
@@ -36,7 +41,6 @@
       args:
         executable: /bin/bash # Ensure bash is used for shell hooks
       ansible.builtin.shell: |
-
         # install micromamba
         rm -f bin/micromamba
         curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
