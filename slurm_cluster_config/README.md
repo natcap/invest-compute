@@ -15,9 +15,15 @@ From this directory, run:
 ```
 This uses the `hpc-slurm.yml` blueprint to create the `hpc-slurm` deployment folder, which contains the terraform files.
 
+Copy the additional terraform code into that directory:
+```
+cp server_interface.tf hpc-slurm/primary
+```
+
 To deploy:
 ```
-~/cluster-toolkit/gcluster deploy hpc-slurm
+cd hpc-slurm/primary
+terraform apply
 ```
 This will create the infrastructure defined in `hpc-slurm` in your GCP project. At this point, all the necessary GCP resources are in place, but we still need to install software and launch the server.
 

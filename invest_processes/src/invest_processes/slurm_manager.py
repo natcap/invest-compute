@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from pathlib import Path
 import subprocess
 import tempfile
@@ -20,6 +21,9 @@ LOGGER = logging.getLogger(__name__)
 BUCKET_NAME = 'invest-compute-workspaces'
 STORAGE_CLIENT = storage.Client()
 BUCKET = STORAGE_CLIENT.bucket(BUCKET_NAME)
+
+WORKSPACE_ROOT = 'workspaces'
+os.makedirs(WORKSPACE_ROOT, exist_ok=True)
 
 
 def upload_directory_to_bucket(dir_path):
@@ -146,7 +150,7 @@ class SlurmManager(BaseManager):
             field_name: name of the data field to query
 
         Returns:
-            string field value
+            string field value or None
         """
         scontrol_command = ['scontrol', '--json', 'show', 'job', str(job_id)]
         LOGGER.debug('Calling scontrol: ' + ' '.join(scontrol_command))
@@ -193,13 +197,13 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        comment = json.loads(self.get_scontrol_data(job_id, 'comment'))
-        if not comment:
+        comment_string = self.get_scontrol_data(job_id, 'comment')
+        if not comment_string:
             # increase returned field width up to 1000 characters
-            comment = json.loads(self.get_sacct_data(job_id, 'Comment%1000'))
-        if not comment:
+            comment_string = self.get_sacct_data(job_id, 'Comment%1000')
+        if not comment_string:
             raise ValueError('job comment not found by scontrol or sacct')
-        return comment
+        return json.loads(comment_string)
 
     def get_job_submit_time(self, job_id):
         return self.get_sacct_data(job_id, 'Submit')
@@ -234,7 +238,7 @@ class SlurmManager(BaseManager):
                 LOGGER.debug('Job finished but  not yet complete.')
                 job_status = JobStatus.running
             else:
-                LOGGER.debug('Job and post processing completed.')
+                LOGGER.debug(f'Job {job_id} and post processing completed.')
 
         return {
             "type": "process",
@@ -414,6 +418,9 @@ class SlurmManager(BaseManager):
                 LOGGER.debug(f'Copying workspace for job {job_id} to bucket')
                 upload_directory_to_bucket(workspace_dir)
 
+            except Exception as err:
+                LOGGER.exception(err)
+
             finally:
                 LOGGER.debug('Creating job complete token')
                 # write token to workspace directory
@@ -535,12 +542,15 @@ class SlurmManager(BaseManager):
         Returns:
             job_id, workspace_dir
         """
-        # Create a workspace directory for the slurm job
+        # Create a workspace directory for the slurm job.
         # This will contain the slurm script, stdout and stderr logs,
         # and the process being run may create additional outputs in it.
         # This entire directory will be copied over to GCP for the user to
         # access after the job finishes.
-        workspace_dir = tempfile.mkdtemp(prefix='slurm_wksp_')
+        # NOTE: this cannot live in the system default tmp directory, for some
+        # reason the contents got deleted immediately.
+        workspace_dir = tempfile.mkdtemp(prefix='slurm_wksp_', dir=WORKSPACE_ROOT)
+
         # create the slurm script in the workspace so that the user can see it
         script_path = Path(workspace_dir) / 'script.slurm'
         script = processor.create_slurm_script(**data_dict, workspace_dir=workspace_dir)
