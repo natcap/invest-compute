@@ -46,6 +46,7 @@ x-google-api-management:
       # point to the Cloud Run service URL
       # this template placeholder gets filled in by lb.tf
       address: ${backend_url}
+      pathTranslation: APPEND_PATH_TO_ADDRESS
 paths:
   /:
     get:
@@ -67,6 +68,7 @@ paths:
         - server
   /collections:
     get:
+      x-google-backend: invest_compute_backend
       description: Collections
       operationId: getCollections
       parameters:
@@ -84,6 +86,7 @@ paths:
         - server
   /conformance:
     get:
+      x-google-backend: invest_compute_backend
       description: API conformance definition
       operationId: getConformanceDeclaration
       parameters:
@@ -101,6 +104,7 @@ paths:
         - server
   /jobs:
     get:
+      x-google-backend: invest_compute_backend
       description: Retrieve a list of jobs
       operationId: getJobs
       responses:
@@ -115,6 +119,7 @@ paths:
         - jobs
   /jobs/{jobId}:
     delete:
+      x-google-backend: invest_compute_backend
       description: Cancel / delete job
       operationId: deleteJob
       parameters:
@@ -135,6 +140,7 @@ paths:
       tags:
         - jobs
     get:
+      x-google-backend: invest_compute_backend
       description: Retrieve job details
       operationId: getJob
       parameters:
@@ -157,6 +163,7 @@ paths:
         - jobs
   /jobs/{jobId}/results:
     get:
+      x-google-backend: invest_compute_backend
       description: Retrieve job results
       operationId: getJobResults
       parameters:
@@ -179,6 +186,7 @@ paths:
         - jobs
   /openapi:
     get:
+      x-google-backend: invest_compute_backend
       description: This document
       operationId: getOpenapi
       parameters:
@@ -208,6 +216,7 @@ paths:
         - server
   /processes:
     get:
+      x-google-backend: invest_compute_backend
       description: Processes
       operationId: getProcesses
       parameters:
@@ -222,6 +231,7 @@ paths:
         - server
   /processes/execute:
     get:
+      x-google-backend: invest_compute_backend
       description: A process that executes an InVEST model.
       operationId: describeExecuteProcess
       parameters:
@@ -236,6 +246,7 @@ paths:
         - execute
   /processes/execute/execution:
     post:
+      x-google-backend: invest_compute_backend
       description: A process that executes an InVEST model.
       operationId: executeExecuteJob
       parameters:
@@ -277,6 +288,7 @@ paths:
         - execute
   /processes/validate:
     get:
+      x-google-backend: invest_compute_backend
       description: A process that validates inputs to an InVEST model.
       operationId: describeValidateProcess
       parameters:
@@ -291,6 +303,7 @@ paths:
         - validate
   /processes/validate/execution:
     post:
+      x-google-backend: invest_compute_backend
       description: A process that validates inputs to an InVEST model.
       operationId: executeValidateJob
       parameters:
