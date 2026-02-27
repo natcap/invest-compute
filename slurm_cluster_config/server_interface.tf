@@ -372,8 +372,8 @@ resource "google_project_iam_member" "github_actions_uploader_binding" {
 }
 
 # Define the GitHub Organization name as a variable
-variable "github_org" {
-  description = "The GitHub organization name"
+variable "github_repo" {
+  description = "The GitHub repo name, for example 'natcap/invest-compute'"
   type        = string
 }
 
@@ -386,7 +386,7 @@ resource "google_iam_workload_identity_pool_provider" "github_actions" {
   workload_identity_pool_id          = google_iam_workload_identity_pool.github_actions.workload_identity_pool_id
   workload_identity_pool_provider_id = "github-actions"
   attribute_condition = <<EOT
-    assertion.repository_owner_id == "${var.github_org}"
+    assertion.repository == "${var.github_repo}"
 EOT
 
   # Default mappings copied from terraform google provider documentation
@@ -405,7 +405,7 @@ EOT
 resource "google_project_iam_member" "github_binding" {
   project = var.project_id
   role    = "roles/iam.workloadIdentityUser"
-  member  = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_actions.name}/attribute.repository_owner/${var.github_org}"
+  member  = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github_actions.name}/attribute.repository/${var.github_repo}"
 }
 
 output "github_actions_workload_identity_provider_name" {
