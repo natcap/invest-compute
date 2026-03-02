@@ -11,19 +11,26 @@ The following steps assume that the resulting executable exists at `~/cluster-to
 
 From this directory, run:
 ```
-~/cluster-toolkit/gcluster create hpc-slurm.yml --vars project_id=natcap-servers
+~/cluster-toolkit/gcluster create hpc-slurm.yml --vars project_id=sdss-sdss-invest-compute
 ```
 This uses the `hpc-slurm.yml` blueprint to create the `hpc-slurm` deployment folder, which contains the terraform files.
 
 Copy the additional terraform code into that directory:
 ```
 cp server_interface.tf hpc-slurm/primary
+cp providers.tf hpc-slurm/primary  # overwrite the existing providers.tf
+```
+
+You should already be authenticated with `gcloud` in the correct project. You'll also need to make sure the quota project is set correctly:
+```
+gcloud auth application-default set-quota-project sdss-sdss-invest-compute
 ```
 
 To deploy:
 ```
 cd hpc-slurm/primary
-terraform apply
+terraform init
+terraform plan
 ```
 This will create the infrastructure defined in `hpc-slurm` in your GCP project. At this point, all the necessary GCP resources are in place, but we still need to install software and launch the server.
 
