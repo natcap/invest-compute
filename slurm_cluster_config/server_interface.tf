@@ -1,3 +1,10 @@
+# Configure remote state
+terraform {
+  backend "gcs" {
+    bucket  = "invest_compute_terraform_state"
+  }
+}
+
 # Enable the necessary APIs ---------------------------------------------------
 resource "google_project_service" "enable_services" {
   project = var.project_id

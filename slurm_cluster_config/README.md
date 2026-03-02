@@ -7,22 +7,25 @@ These steps are meant to be run on your local dev machine.
 
 Install Google Cluster Toolkit following the instructions:
 https://docs.cloud.google.com/cluster-toolkit/docs/setup/configure-environment
-The following steps assume that the resulting executable exists at `~/cluster-toolkit/gcluster`. All the commands below are run on your development machine, it is not necessary to directly run anything on the cluster instances.
+The following steps assume that the resulting executable exists at `~/cluster-toolkit/gcluster`. All the commands below are run on your development machine, it is not necessary to directly run anything on the cluster instances. You should already be authenticated with `gcloud` in the correct project. Terraform will run with your local application default credentials.
 
 From this directory, run:
 ```
-~/cluster-toolkit/gcluster create hpc-slurm.yml --vars project_id=natcap-servers
+~/cluster-toolkit/gcluster create hpc-slurm.yml --vars project_id=sdss-sdss-invest-compute
 ```
 This uses the `hpc-slurm.yml` blueprint to create the `hpc-slurm` deployment folder, which contains the terraform files.
 
 Copy the additional terraform code into that directory:
 ```
 cp server_interface.tf hpc-slurm/primary
+cp providers.tf hpc-slurm/primary  # overwrite the existing providers.tf
 ```
 
 To deploy:
 ```
 cd hpc-slurm/primary
+terraform init
+terraform plan
 terraform apply
 ```
 This will create the infrastructure defined in `hpc-slurm` in your GCP project. At this point, all the necessary GCP resources are in place, but we still need to install software and launch the server.
