@@ -288,47 +288,29 @@ resource "google_compute_url_map" "default" {
   default_service = google_compute_backend_service.gateway_backend.id
 }
 
-# Create a private key for the self-signed certificate
-resource "tls_private_key" "default" {
-  algorithm = "RSA"
-  rsa_bits  = 2048
+# Define the domain name pointing to the Load Balancer as a variable
+variable "domain_name" {
+  description = "The load balancer domain name, e.g. 'compute.naturalcapitalalliance.org'"
+  type        = string
 }
 
-# Create a self-signed certificate
-resource "tls_self_signed_cert" "default" {
-  private_key_pem = tls_private_key.default.private_key_pem
+# Create a Google-managed SSL certificate for the load balancer
+resource "google_compute_managed_ssl_certificate" "default" {
+  provider = google-beta
+  name     = "invest-compute-ssl-cert"
 
-  # This subject is "fake" but required. It won't match your IP, causing a warning.
-  subject {
-    common_name  = "protected-app.internal"
-    organization = "My Organization"
-  }
-
-  validity_period_hours = 8760 # 1 year
-
-  allowed_uses = [
-    "key_encipherment",
-    "digital_signature",
-    "server_auth",
-  ]
-}
-
-# Upload the self-signed certificate to Google Compute Engine
-resource "google_compute_ssl_certificate" "default" {
-  name_prefix = "self-signed-cert-"
-  private_key = tls_private_key.default.private_key_pem
-  certificate = tls_self_signed_cert.default.cert_pem
-
-  lifecycle {
-    create_before_destroy = true
+  managed {
+    domains = [var.domain_name]
   }
 }
 
-# Create HTTPS Proxy using the self-signed certificate
+# Create HTTPS Proxy using the Google-managed SSL certificate
 resource "google_compute_target_https_proxy" "default" {
+  provider         = google-beta
   name             = "https-proxy"
   url_map          = google_compute_url_map.default.id
-  ssl_certificates = [google_compute_ssl_certificate.default.id]
+  ssl_certificates = [google_compute_managed_ssl_certificate.default.name]
+  depends_on = [google_compute_managed_ssl_certificate.default]
 }
 
 # Create a Forwarding Rule - Listens on HTTPS (443)
