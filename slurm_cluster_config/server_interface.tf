@@ -336,10 +336,15 @@ resource "google_compute_global_forwarding_rule" "default" {
   name       = "forwarding-rule"
   target     = google_compute_target_https_proxy.default.id
   port_range = "443"
+  ip_address = google_compute_global_address.default.address
 }
 
-# TODO:
-# reserve a static external IP address for the load balancer
+# Reserve a static external IP address for the load balancer
+resource "google_compute_global_address" "default" {
+  project      = var.project_id
+  name         = "load-balancer-address"
+  address_type = "EXTERNAL"
+}
 
 # -----------------------------------------------------------------------------
 # Storage Bucket
