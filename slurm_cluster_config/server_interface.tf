@@ -11,6 +11,7 @@ resource "google_project_service" "enable_services" {
   for_each = toset([
     "apigateway.googleapis.com",
     "apikeys.googleapis.com",
+    "cloudbuild.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "run.googleapis.com",
     "secretmanager.googleapis.com",
@@ -19,6 +20,43 @@ resource "google_project_service" "enable_services" {
   ])
   service            = each.key
   disable_on_destroy = false
+}
+
+
+# Docker container ------------------------------------------------------------
+
+# 1. Create the Artifact Registry Repository
+resource "google_artifact_registry_repository" "my_repo" {
+  location      = "us-central1"
+  repository_id = "my-docker-repo"
+  description   = "Docker repository for my local images"
+  format        = "DOCKER"
+}
+
+# 2. Configure Docker Provider to authenticate with GCP
+data "google_client_config" "default" {}
+
+provider "docker" {
+  registry_auth {
+    address  = "${google_artifact_registry_repository.my_repo.location}-docker.pkg.dev"
+    username = "oauth2accesstoken"
+    password = data.google_client_config.default.access_token
+  }
+}
+
+# 3. Build and Push the local image
+resource "docker_image" "my_image" {
+  # The name must match the GCP format: LOCATION-docker.pkg.dev/PROJECT/REPO/IMAGE:TAG
+  name = "${google_artifact_registry_repository.my_repo.location}-docker.pkg.dev/${google_artifact_registry_repository.my_repo.project}/${google_artifact_registry_repository.my_repo.repository_id}/my-app:v1"
+  
+  build {
+    context = "../../../invest_processes" # Path to your local directory containing the Dockerfile
+  }
+}
+
+# 4. (Optional) Ensure the image is actually pushed to the registry
+resource "docker_registry_image" "push_to_gcp" {
+  name = docker_image.my_image.name
 }
 
 
@@ -43,6 +81,63 @@ resource "google_secret_manager_secret_iam_member" "cloud_run_secret_access" {
   role      = "roles/secretmanager.secretAccessor"
   member    = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
+
+
+
+# 1. Zip the local source code
+data "archive_file" "source_archive" {
+  type        = "tar.gz"
+  source_dir  = "../../../invest_processes"
+  output_path = "${path.module}/invest_processes.tar.gz"
+}
+
+# Google Storage Bucket to hold uploaded source code for the server
+resource "google_storage_bucket" "pygeoapi_server_source_bucket" {
+  name          = "pygeoapi_server_source_bucket"
+  location      = "US"
+  force_destroy = true
+
+  # delete contents older than 3 days
+  lifecycle_rule {
+    condition {
+      age = 3
+    }
+    action {
+      type = "Delete"
+    }
+  }
+}
+
+# 2. Upload source to a GCS bucket
+resource "google_storage_bucket_object" "source_object" {
+  name   = "source-${data.archive_file.source_archive.output_md5}.zip"
+  bucket = google_storage_bucket.pygeoapi_server_source_bucket.name
+  source = data.archive_file.source_archive.output_path
+}
+
+# Define Cloud Run with a build_config
+resource "google_cloud_run_v2_service" "pygeoapi_service" {
+  provider = google-beta
+  name     = "pygeoapi-service"
+  location = "us-central1"
+  deletion_protection = false
+
+  template {
+    containers {
+      # This points to where the build will save the image
+      image = "us-central1-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.my_repo.repository_id}/my-image:latest"
+    }
+  }
+
+  # Because a Dockerfile exists in the zip, Cloud Build automatically uses it
+  build_config {
+    source_location = "${google_storage_bucket.pygeoapi_server_source_bucket.url}/${google_storage_bucket_object.source_object.name}"
+  }
+
+  # Wait for the upload to finish before deploying
+  depends_on = [google_storage_bucket_object.source_object]
+}
+
 
 # Create the Cloud Run Service
 resource "google_cloud_run_v2_service" "proxy" {
@@ -292,6 +387,7 @@ resource "google_compute_url_map" "default" {
 variable "domain_name" {
   description = "The load balancer domain name, e.g. 'compute.naturalcapitalalliance.org'"
   type        = string
+  default     = "compute.naturalcapitalalliance.org"
 }
 
 # Create a Google-managed SSL certificate for the load balancer
@@ -377,6 +473,7 @@ resource "google_project_iam_member" "github_actions_uploader_binding" {
 variable "github_repo" {
   description = "The GitHub repo name, for example 'natcap/invest-compute'"
   type        = string
+  default     = "natcap/invest-compute"
 }
 
 # Create Workload Identity Pool and Provider to authenticate GHA workflows
