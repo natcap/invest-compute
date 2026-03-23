@@ -44,10 +44,17 @@ provider "docker" {
   }
 }
 
+locals {
+  # Calculate a SHA1 hash of all files in the "app" directory (your build context)
+  app_dir_sha1 = sha1(join("", [
+    for f in fileset(path.module, "../../../invest_processes/**") : filesha1(f)
+  ]))
+}
+
 # 3. Build and Push the local image
 resource "docker_image" "my_image" {
   # The name must match the GCP format: LOCATION-docker.pkg.dev/PROJECT/REPO/IMAGE:TAG
-  name = "${google_artifact_registry_repository.my_repo.location}-docker.pkg.dev/${google_artifact_registry_repository.my_repo.project}/${google_artifact_registry_repository.my_repo.repository_id}/my-app:v1"
+  name = "${google_artifact_registry_repository.my_repo.location}-docker.pkg.dev/${google_artifact_registry_repository.my_repo.project}/${google_artifact_registry_repository.my_repo.repository_id}/my-app:${local.app_dir_sha1}"
   
   build {
     context = "../../../invest_processes" # Path to your local directory containing the Dockerfile
@@ -83,38 +90,6 @@ resource "google_secret_manager_secret_iam_member" "cloud_run_secret_access" {
 }
 
 
-
-# 1. Zip the local source code
-data "archive_file" "source_archive" {
-  type        = "tar.gz"
-  source_dir  = "../../../invest_processes"
-  output_path = "${path.module}/invest_processes.tar.gz"
-}
-
-# Google Storage Bucket to hold uploaded source code for the server
-resource "google_storage_bucket" "pygeoapi_server_source_bucket" {
-  name          = "pygeoapi_server_source_bucket"
-  location      = "US"
-  force_destroy = true
-
-  # delete contents older than 3 days
-  lifecycle_rule {
-    condition {
-      age = 3
-    }
-    action {
-      type = "Delete"
-    }
-  }
-}
-
-# 2. Upload source to a GCS bucket
-resource "google_storage_bucket_object" "source_object" {
-  name   = "source-${data.archive_file.source_archive.output_md5}.zip"
-  bucket = google_storage_bucket.pygeoapi_server_source_bucket.name
-  source = data.archive_file.source_archive.output_path
-}
-
 # Define Cloud Run with a build_config
 resource "google_cloud_run_v2_service" "pygeoapi_service" {
   provider = google-beta
@@ -125,17 +100,21 @@ resource "google_cloud_run_v2_service" "pygeoapi_service" {
   template {
     containers {
       # This points to where the build will save the image
-      image = "us-central1-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.my_repo.repository_id}/my-image:latest"
+      image = docker_image.my_image.name
+
+      ports {
+        container_port = 8080
+      }
+
+      startup_probe {
+        tcp_socket {
+          port = 5000
+        }
+      }
     }
   }
 
-  # Because a Dockerfile exists in the zip, Cloud Build automatically uses it
-  build_config {
-    source_location = "${google_storage_bucket.pygeoapi_server_source_bucket.url}/${google_storage_bucket_object.source_object.name}"
-  }
-
-  # Wait for the upload to finish before deploying
-  depends_on = [google_storage_bucket_object.source_object]
+  depends_on = [docker_registry_image.push_to_gcp]
 }
 
 
