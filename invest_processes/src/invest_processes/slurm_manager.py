@@ -19,8 +19,6 @@ from pygeoapi.util import (
 
 LOGGER = logging.getLogger(__name__)
 BUCKET_NAME = 'invest-compute-workspaces'
-STORAGE_CLIENT = storage.Client()
-BUCKET = STORAGE_CLIENT.bucket(BUCKET_NAME)
 
 WORKSPACE_ROOT = 'workspaces'
 os.makedirs(WORKSPACE_ROOT, exist_ok=True)
@@ -36,6 +34,8 @@ def upload_directory_to_bucket(dir_path):
     Returns:
         None
     """
+    STORAGE_CLIENT = storage.Client()
+    BUCKET = STORAGE_CLIENT.bucket(BUCKET_NAME)
     dir_path = Path(dir_path)
     for path in dir_path.rglob('*'):
         if not path.is_file():
