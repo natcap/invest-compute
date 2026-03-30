@@ -24,6 +24,21 @@ WORKSPACE_ROOT = 'workspaces'
 os.makedirs(WORKSPACE_ROOT, exist_ok=True)
 
 
+def run_over_ssh(command):
+    vm_name = 'hpcslurm-slurm-login-001'
+    return subprocess.run(
+        [
+            'gcloud', 'compute', 'ssh', vm_name, 
+            '--project', 'sdss-sdss-invest-compute',
+            '--zone', 'us-central1-a', 
+            '--tunnel-through-iap',
+            '--quiet', # disable interactive prompts
+            '--',
+            ' '.join(command)
+        ]
+        capture_output=True, text=True)
+
+
 def upload_directory_to_bucket(dir_path):
     """Upload everything in a given directory to the GCP bucket.
 
@@ -568,22 +583,20 @@ class SlurmManager(BaseManager):
         })
 
         # Submit the job
-        try:
-            args = [
-                'sbatch', '--parsable',
-                '--comment', f'{job_metadata}',  # custom metadata
-                '--chdir', workspace_dir,
-                '--output', 'stdout.log',  # relative to the slurm workspace dir
-                '--error', 'stderr.log',
-                script_path]
-            LOGGER.info(
-                f'Submitting slurm job with the following command:\n{args}')
-            result = subprocess.run(
-                args, capture_output=True, text=True, check=True)
-            LOGGER.info(f'stdout from sbatch: {result.stdout}')
-
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError('Error when submitting slurm job') from e
+        args = [
+            'sbatch', '--parsable',
+            '--comment', f'{job_metadata}',  # custom metadata
+            '--chdir', workspace_dir,
+            '--output', 'stdout.log',  # relative to the slurm workspace dir
+            '--error', 'stderr.log',
+            str(script_path)]
+        LOGGER.info(
+            f'Submitting slurm job with the following command:\n{args}')
+        result = run_over_ssh(args, capture_output=True, text=True)
+        LOGGER.info(f'stdout from sbatch: {result.stdout}')
+        LOGGER.debug(f'stderr from sbatch: {result.stderr}')
+        if result.returncode != 0:
+            raise RuntimeError(f'Submitting slurm job returned non-zero exit code {result.returncode}')
 
         job_id = result.stdout.strip()
         LOGGER.info(f"Job submitted successfully with ID: {job_id}")

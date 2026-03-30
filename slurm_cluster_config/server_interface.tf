@@ -22,6 +22,12 @@ resource "google_project_service" "enable_services" {
   disable_on_destroy = false
 }
 
+# Enable OS login for all VMs -------------------------------------------------
+resource "google_compute_project_metadata" "default" {
+  metadata = {
+    enable-oslogin = "TRUE"
+  }
+}
 
 # Docker container ------------------------------------------------------------
 
@@ -55,13 +61,30 @@ resource "google_service_account" "cloud_run_sa" {
   display_name = "Service Account for Cloud Run"
 }
 
-# Allow Cloud Run to start builds
-resource "google_project_iam_member" "run_agent_build_editor" {
+# Allow Cloud Run to find VMs and use OS Login
+resource "google_project_iam_member" "cloud_run_sa_os_login" {
   project = var.project_id
-  role    = "roles/cloudbuild.builds.editor"
+  role    = "roles/compute.osLogin"
   member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
 
+resource "google_project_iam_member" "cloud_run_sa_iap_tunneling" {
+  project = var.project_id
+  role    = "roles/iap.tunnelResourceAccessor"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
+resource "google_project_iam_member" "cloud_run_sa_compute_viewer" {
+  project = var.project_id
+  role    = "roles/compute.viewer"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
+resource "google_project_iam_member" "cloud_run_sa_service_account_user" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
 
 
 # Create a Storage Bucket to hold the zipped source code
@@ -124,9 +147,22 @@ resource "google_cloud_run_v2_service" "pygeoapi_service" {
         container_port = 5000
       }
 
+      # Define environment variables
+      env {
+        name  = "HOME"
+        value = "/tmp"
+      }
+
       startup_probe {
         tcp_socket {
           port = 5000
+        }
+      }
+
+      resources {
+        limits = {
+          "cpu" = "2"
+          "memory" = "8Gi"
         }
       }
     }
