@@ -12,9 +12,6 @@ dependencies = [
     "flask",
     "natcap.invest",
     "pygeoapi>=0.23.2",
-    # rasterio is not a direct dependency, but a dependency of pygeoapi.
-    # older versions need pkg_resources to install, which is deprecated in recent python versions
-    "rasterio>=1.4.0",
     "google-cloud-storage"
 ]
 
@@ -22,7 +19,9 @@ dependencies = [
 homepage = "http://github.com/natcap/invest-compute"
 
 [build-system]
-requires = ['setuptools>=64', 'wheel', 'setuptools_scm>=8.0']
+# setuptools<82 because pkg_resources was deprecated, but we still need it for
+# rasterio as a dependency of pygeoapi
+requires = ['setuptools>=64,<82', 'wheel', 'setuptools_scm>=8.0']
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
