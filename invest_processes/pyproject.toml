@@ -8,7 +8,6 @@ maintainers = [
     {name = "Natural Capital Project Software Team"}
 ]
 dynamic = ["version"] # the version is provided dynamically by setuptools_scm
-
 dependencies = [
     "flask",
     "natcap.invest",
