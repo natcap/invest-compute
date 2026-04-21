@@ -299,8 +299,9 @@ resource "google_compute_url_map" "default" {
 
 # Define the domain name pointing to the Load Balancer as a variable
 variable "domain_name" {
-  description = "The load balancer domain name, e.g. 'compute.naturalcapitalalliance.org'"
+  description = "The load balancer domain name, e.g. compute.naturalcapitalalliance.org"
   type        = string
+  default     = "compute.naturalcapitalalliance.org"
 }
 
 # Create a Google-managed SSL certificate for the load balancer
@@ -384,8 +385,9 @@ resource "google_project_iam_member" "github_actions_uploader_binding" {
 
 # Define the GitHub Organization name as a variable
 variable "github_repo" {
-  description = "The GitHub repo name, for example 'natcap/invest-compute'"
+  description = "The GitHub repo name, e.g. natcap/invest-compute"
   type        = string
+  default     = "natcap/invest-compute"
 }
 
 # Create Workload Identity Pool and Provider to authenticate GHA workflows
