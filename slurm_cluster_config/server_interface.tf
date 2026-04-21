@@ -244,14 +244,15 @@ resource "google_api_gateway_gateway" "api_gw" {
 # -----------------------------------------------------------------------------
 # API Key
 #
-# The client must provide this key in their requests as a URL parameter
+# The client must provide an API key in their requests as a URL parameter
 # called "key". The API Gateway enforces that the key is provided correctly.
-# The key may be accessed by running `terraform output api_key` after a
+# The keys may be accessed by running `terraform output api_keys` after a
 # successful `terraform apply`.
-#
-# TODO: Generate separate keys for multiple users
 
 # Map API key names to display names
+# To create a new key for a new client, add them to this map.
+# This will not scale to many hundreds of clients, see
+# https://github.com/natcap/invest-compute/issues/34
 locals {
   api_clients = {
     primary = "Primary key - for software team use"
