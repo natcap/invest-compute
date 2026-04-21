@@ -9,12 +9,10 @@ maintainers = [
 ]
 dynamic = ["version"] # the version is provided dynamically by setuptools_scm
 
-# install pygeoapi from their working branch because their releases pin specific
-# versions of each requirement, which are old and conflict with our dependencies
 dependencies = [
     "flask",
     "natcap.invest",
-    "pygeoapi @ git+https://github.com/geopython/pygeoapi.git",
+    "pygeoapi==0.23.0",
     "google-cloud-storage"
 ]
 
