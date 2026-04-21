@@ -251,9 +251,19 @@ resource "google_api_gateway_gateway" "api_gw" {
 #
 # TODO: Generate separate keys for multiple users
 
-resource "google_apikeys_key" "primary_key" {
-  name         = "primary-key"
-  display_name = "My Primary API Key"
+# Map API key names to display names
+locals {
+  api_clients = {
+    primary = "Primary key - for software team use"
+    urban-online = "Urban Online client"
+  }
+}
+
+
+resource "google_apikeys_key" "api_keys" {
+  for_each     = local.api_clients
+  name         = each.key
+  display_name = each.value
   project      = var.project_id
 
   restrictions {
@@ -263,11 +273,10 @@ resource "google_apikeys_key" "primary_key" {
   }
 }
 
-output "api_key" {
-  value     = google_apikeys_key.primary_key.key_string
+output "api_keys" {
+  value     = {for key in google_apikeys_key.api_keys: key.name => key.key_string}
   sensitive = true
 }
-
 
 # ------------------------------------------------------------------------------
 # Load Balancer
