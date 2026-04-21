@@ -11,7 +11,7 @@ dynamic = ["version"] # the version is provided dynamically by setuptools_scm
 dependencies = [
     "flask",
     "natcap.invest",
-    "pygeoapi",
+    "pygeoapi>=0.23.2",
     "google-cloud-storage"
 ]
 
