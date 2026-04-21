@@ -137,12 +137,8 @@ jobs:
         with:
           environment-name: env
           # pin numpy: https://github.com/natcap/invest/issues/2288
-          # requiring python 3.12 because pygeoapi requires rasterio==1.3.9,
-          # which will fail to build from source because it still uses pkg_resources
-          # and does not include the necessary setuptools pin in its metadata.
-          # rasterio 1.3.9 wheels are not available for python>=3.13.
           create-args: >-
-            python=3.12
+            python=3.13
             natcap.invest
             pytest
             numpy<2.4.0
