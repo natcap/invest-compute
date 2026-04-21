@@ -21,7 +21,7 @@ homepage = "http://github.com/natcap/invest-compute"
 [build-system]
 # setuptools<82 because pkg_resources was deprecated, but we still need it for
 # rasterio as a dependency of pygeoapi
-requires = ['setuptools>=64,<82', 'wheel', 'setuptools_scm>=8.0']
+requires = ['setuptools>=64,<81', 'wheel', 'setuptools_scm>=8.0']
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
