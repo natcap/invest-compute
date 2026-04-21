@@ -32,7 +32,7 @@
 
     - name: Synchronize the local repository
       ansible.posix.synchronize:
-        src: ~/invest-compute
+        src: ~/invest-compute/invest_processes
         dest: "~"
         mode: push
         delete: yes
@@ -40,6 +40,8 @@
     - name: Install and launch server
       args:
         executable: /bin/bash # Ensure bash is used for shell hooks
+      environment:
+        SETUPTOOLS_SCM_PRETEND_VERSION_FOR_INVEST_PROCESSES: 0.1.0
       ansible.builtin.shell: |
         # install micromamba
         rm -f bin/micromamba
@@ -50,11 +52,14 @@
         # create and activate the environment
         micromamba create -y -n env python=3.13 gdal natcap.invest==3.17.2
         micromamba activate env
-        pip install pygeoapi
+        pip install --no-cache-dir --only-binary=:all: pygeoapi
         pygeoapi --version
 
+        ls
+        pwd
+
         # install invest extensions to pygeoapi
-        cd invest-compute/invest_processes
+        cd invest_processes
         pip install .
 
         # configure pygeoapi

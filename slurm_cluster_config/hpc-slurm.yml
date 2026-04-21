@@ -54,7 +54,7 @@ deployment_groups:
   # the module by Filestore modules.
   # https://cloud.google.com/vpc/docs/configure-private-services-access#permissions
   - id: private_service_access
-    source: community/modules/network/private-service-access
+    source: modules/network/private-service-access
     use: [network]
     settings:
       deletion_policy: "ABANDON"
@@ -70,7 +70,7 @@ deployment_groups:
     use: [network]
     settings:
       node_count_dynamic_max: 4
-      machine_type: n2-standard-2
+      machine_type: c2-standard-8
       allow_automatic_updates: false
 
   - id: debug_partition
@@ -90,6 +90,7 @@ deployment_groups:
       bandwidth_tier: gvnic_enabled
       allow_automatic_updates: false
       startup_script: startup_script.sh
+      machine_type: c2-standard-8
 
   - id: compute_partition
     source: community/modules/compute/schedmd-slurm-gcp-v6-partition
