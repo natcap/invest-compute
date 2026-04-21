@@ -137,11 +137,14 @@ jobs:
         with:
           environment-name: env
           # pin numpy: https://github.com/natcap/invest/issues/2288
+          # setuptools<81 because pkg_resources was deprecated, but
+          # rasterio (dependency of pygeoapi) still needs it
           create-args: >-
             python=3.13
             natcap.invest
             pytest
             numpy<2.4.0
+            setuptools<81
           condarc: |
             channels:
               - conda-forge
