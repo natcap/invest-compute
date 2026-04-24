@@ -88,11 +88,14 @@ class ValidateProcessor(BaseProcessor):
         Returns:
             string contents of the script
         """
-        json_path, _ = download_and_extract_datastack(
-            datastack_url, Path(workspace_dir) / 'datastack')
+        json_path = f'{workspace_dir}/datastack/parameters.invest.json'
         return textwrap.dedent(f"""\
             #!/bin/sh
             #SBATCH --time=10
+
+            curl -o datastack.tgz "{datastack_url}"
+            mkdir {workspace_dir}/datastack
+            tar -xzvf datastack.tgz -C {workspace_dir}/datastack
             invest validate --json {json_path}
             """)
 
