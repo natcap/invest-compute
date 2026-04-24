@@ -244,16 +244,27 @@ resource "google_api_gateway_gateway" "api_gw" {
 # -----------------------------------------------------------------------------
 # API Key
 #
-# The client must provide this key in their requests as a URL parameter
+# The client must provide an API key in their requests as a URL parameter
 # called "key". The API Gateway enforces that the key is provided correctly.
-# The key may be accessed by running `terraform output api_key` after a
+# The keys may be accessed by running `terraform output api_keys` after a
 # successful `terraform apply`.
-#
-# TODO: Generate separate keys for multiple users
 
-resource "google_apikeys_key" "primary_key" {
-  name         = "primary-key"
-  display_name = "My Primary API Key"
+# Map API key names to display names
+# To create a new key for a new client, add them to this map.
+# This will not scale to many hundreds of clients, see
+# https://github.com/natcap/invest-compute/issues/34
+locals {
+  api_clients = {
+    primary = "Primary key - for software team use"
+    urban-online = "Urban Online client"
+  }
+}
+
+
+resource "google_apikeys_key" "api_keys" {
+  for_each     = local.api_clients
+  name         = each.key
+  display_name = each.value
   project      = var.project_id
 
   restrictions {
@@ -263,11 +274,10 @@ resource "google_apikeys_key" "primary_key" {
   }
 }
 
-output "api_key" {
-  value     = google_apikeys_key.primary_key.key_string
+output "api_keys" {
+  value     = {for key in google_apikeys_key.api_keys: key.name => key.key_string}
   sensitive = true
 }
-
 
 # ------------------------------------------------------------------------------
 # Load Balancer
@@ -290,8 +300,9 @@ resource "google_compute_url_map" "default" {
 
 # Define the domain name pointing to the Load Balancer as a variable
 variable "domain_name" {
-  description = "The load balancer domain name, e.g. 'compute.naturalcapitalalliance.org'"
+  description = "The load balancer domain name, e.g. compute.naturalcapitalalliance.org"
   type        = string
+  default     = "compute.naturalcapitalalliance.org"
 }
 
 # Create a Google-managed SSL certificate for the load balancer
@@ -375,8 +386,9 @@ resource "google_project_iam_member" "github_actions_uploader_binding" {
 
 # Define the GitHub Organization name as a variable
 variable "github_repo" {
-  description = "The GitHub repo name, for example 'natcap/invest-compute'"
+  description = "The GitHub repo name, e.g. natcap/invest-compute"
   type        = string
+  default     = "natcap/invest-compute"
 }
 
 # Create Workload Identity Pool and Provider to authenticate GHA workflows
