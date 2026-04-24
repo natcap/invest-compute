@@ -76,7 +76,7 @@ class ExecuteProcessor(BaseProcessor):
         json_path = f'{workspace_dir}/datastack/parameters.invest.json'
         return textwrap.dedent(f"""\
             #!/bin/sh
-            #SBATCH --mem-per-cpu=10G
+            #SBATCH --time=10
 
             curl -o datastack.tgz "{datastack_url}"
             mkdir {workspace_dir}/datastack
