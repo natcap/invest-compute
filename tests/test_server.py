@@ -9,9 +9,9 @@ import unittest
 from invest_processes.utils import download_and_extract_datastack
 from pygeoapi import flask_app
 
-CARBON_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_datastack.tgz'
-SQ_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_scenic_quality_datastack.tgz'
-ERROR_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_error_datastack.tgz'
+CARBON_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/main/tests/test_data/invest_carbon_datastack.tgz'
+SQ_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/main/tests/test_data/invest_scenic_quality_datastack.tgz'
+ERROR_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/main/tests/test_data/invest_carbon_error_datastack.tgz'
 
 
 class PyGeoAPIServerTests(unittest.TestCase):
@@ -57,9 +57,11 @@ class PyGeoAPIServerTests(unittest.TestCase):
             f'{execution_response["workspace_url"]}/*', local_dest_path
         ], check=True)
 
+        print('stdout:')
         with open(os.path.join(local_dest_path, 'stdout.log')) as f:
             print(f.read())
 
+        print('stderr:')
         with open(os.path.join(local_dest_path, 'stderr.log')) as f:
             print(f.read())
 
