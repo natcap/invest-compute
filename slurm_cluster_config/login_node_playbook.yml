@@ -32,17 +32,22 @@
 
     - name: Synchronize the local repository
       ansible.posix.synchronize:
-        src: ~/invest-compute/invest_processes
+        src: ~/invest-compute
         dest: "~"
         mode: push
         delete: yes
+        # exclude unneeded directories
+        # we need the top-level git directory for setuptools_scm versioning
+        rsync_opts:
+          - "--exclude=slurm_cluster_config"
+          - "--exclude=tests"
 
     - name: Install and launch server
       args:
         executable: /bin/bash # Ensure bash is used for shell hooks
-      environment:
-        SETUPTOOLS_SCM_PRETEND_VERSION_FOR_INVEST_PROCESSES: 0.1.0
       ansible.builtin.shell: |
+        cd invest_compute/invest_processes
+
         # install micromamba
         rm -f bin/micromamba
         curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
@@ -55,11 +60,8 @@
         pip install --no-cache-dir --only-binary=:all: pygeoapi
         pygeoapi --version
 
-        ls
-        pwd
-
         # install invest extensions to pygeoapi
-        cd invest_processes
+
         pip install .
 
         # configure pygeoapi
