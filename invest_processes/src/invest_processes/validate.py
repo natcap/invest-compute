@@ -95,13 +95,9 @@ class ValidateProcessor(BaseProcessor):
 
             curl -o datastack.tgz "{datastack_url}"
             mkdir {workspace_dir}/datastack
-            echo "datastack:"
-            ls {workspace_dir}/datastack
             tar -xzvf datastack.tgz -C {workspace_dir}/datastack
             rm datastack.tgz
-            echo "starting validation"
             invest validate --json {json_path}
-            echo "finished validation"
             """)
 
     def process_output(self, workspace_dir):
