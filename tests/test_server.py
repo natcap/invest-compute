@@ -9,9 +9,9 @@ import unittest
 from invest_processes.utils import download_and_extract_datastack
 from pygeoapi import flask_app
 
-CARBON_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_datastack.tgz'
-SQ_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_scenic_quality_datastack.tgz'
-ERROR_DATASTACK_URL = 'https://github.com/natcap/invest-compute/raw/refs/heads/feature/compute-note-playbook/tests/test_data/invest_carbon_error_datastack.tgz'
+CARBON_DATASTACK_URL = 'https://raw.githubusercontent.com/natcap/invest-compute/refs/heads/main/tests/test_data/invest_carbon_datastack.tgz'
+SQ_DATASTACK_URL = 'https://raw.githubusercontent.com/natcap/invest-compute/refs/heads/main/tests/test_data/invest_scenic_quality_datastack.tgz'
+ERROR_DATASTACK_URL = 'https://raw.githubusercontent.com/natcap/invest-compute/refs/heads/main/tests/test_data/invest_carbon_error_datastack.tgz'
 
 
 class PyGeoAPIServerTests(unittest.TestCase):
@@ -56,6 +56,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
             'gcloud', 'storage', 'cp', '--recursive',
             f'{execution_response["workspace_url"]}/*', local_dest_path
         ], check=True)
+
         self.assertEqual(
             set(os.listdir(local_dest_path)),
             {

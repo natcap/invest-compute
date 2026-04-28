@@ -4,6 +4,6 @@ projects:
 auth_kind: serviceaccount
 # TODO: make this generic
 # create this service account in terraform
-service_account_file: /Users/emily/Downloads/sdss-sdss-invest-compute-5c0f916cfdde.json
+service_account_file: /Users/emily/Downloads/sdss-sdss-invest-compute-6a6b8ce55c81.json
 filters:
   - name = "hpcslurm-slurm-login-001"

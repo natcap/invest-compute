@@ -88,12 +88,16 @@ class ValidateProcessor(BaseProcessor):
         Returns:
             string contents of the script
         """
-        json_path, _ = download_and_extract_datastack(
-            datastack_url, Path(workspace_dir) / 'datastack')
+        json_path = f'{workspace_dir}/datastack/parameters.invest.json'
         return textwrap.dedent(f"""\
             #!/bin/sh
             #SBATCH --time=10
-            invest validate --json {json_path}
+
+            curl -o datastack.tgz "{datastack_url}"
+            mkdir {workspace_dir}/datastack
+            tar -xzvf datastack.tgz -C {workspace_dir}/datastack
+            rm datastack.tgz
+            invest validate --json {json_path} > {workspace_dir}/validation_results.json
             """)
 
     def process_output(self, workspace_dir):
@@ -105,12 +109,9 @@ class ValidateProcessor(BaseProcessor):
         Returns:
             dict of validation results
         """
-        stdout_filepath = Path(workspace_dir) / 'stdout.log'
-        with open(stdout_filepath) as stdout:
-            content = stdout.read()
-        LOGGER.debug('Processing stdout:\n')
-        LOGGER.debug(content)
-        json_output = json.loads(content)
+        output_filepath = Path(workspace_dir) / 'validation_results.json'
+        with open(output_filepath) as file:
+            json_output = json.loads(file.read())
 
         with open(Path(workspace_dir) / 'results.json') as file:
             results = json.load(file)
@@ -124,6 +125,7 @@ class ValidateProcessor(BaseProcessor):
             })
         with open(Path(workspace_dir) / 'results.json', 'w') as file:
             json.dump(results, file)
+        output_filepath.unlink()  # delete the original validation json file
 
     def __repr__(self):
         return f'<InVESTValidateProcessor> {self.name}'

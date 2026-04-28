@@ -73,13 +73,20 @@ class ExecuteProcessor(BaseProcessor):
         Returns:
             string contents of the script
         """
-        json_path, model_id = download_and_extract_datastack(
-            datastack_url, Path(workspace_dir) / 'datastack')
-        workspace_dir = Path(workspace_dir) / f'{model_id}_workspace'
+        json_path = f'{workspace_dir}/datastack/parameters.invest.json'
         return textwrap.dedent(f"""\
             #!/bin/sh
             #SBATCH --time=10
-            invest run --datastack {json_path} --workspace {workspace_dir} {model_id}
+
+            curl -o datastack.tgz "{datastack_url}"
+            mkdir {workspace_dir}/datastack
+            tar -xzvf datastack.tgz -C {workspace_dir}/datastack
+            rm datastack.tgz
+            MODEL_ID=$(python -c "from natcap.invest import datastack; print(datastack.extract_parameter_set('{json_path}').model_id)")
+            invest --debug --taskgraph-log-level=DEBUG run \
+                --datastack {json_path} \
+                --workspace {workspace_dir}/${{MODEL_ID}}_workspace \
+                $MODEL_ID
             """)
 
     def process_output(self, workspace_dir):
