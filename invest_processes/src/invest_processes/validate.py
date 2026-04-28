@@ -97,7 +97,7 @@ class ValidateProcessor(BaseProcessor):
             mkdir {workspace_dir}/datastack
             tar -xzvf datastack.tgz -C {workspace_dir}/datastack
             rm datastack.tgz
-            invest validate --json {json_path}
+            invest validate --json {json_path} > {workspace_dir}/validation_results.json
             """)
 
     def process_output(self, workspace_dir):
@@ -109,12 +109,10 @@ class ValidateProcessor(BaseProcessor):
         Returns:
             dict of validation results
         """
-        stdout_filepath = Path(workspace_dir) / 'stdout.log'
-        with open(stdout_filepath) as stdout:
-            content = stdout.read()
-        LOGGER.debug('Processing stdout:\n')
-        LOGGER.debug(content)
-        json_output = json.loads(content)
+        output_filepath = Path(workspace_dir) / 'validation_results.json'
+        with open(output_filepath) as file:
+            json_output = json.loads(file.read())
+            print(json_output)
 
         with open(Path(workspace_dir) / 'results.json') as file:
             results = json.load(file)
