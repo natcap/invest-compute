@@ -81,11 +81,8 @@ class ExecuteProcessor(BaseProcessor):
             curl -o datastack.tgz "{datastack_url}"
             mkdir {workspace_dir}/datastack
             tar -xzvf datastack.tgz -C {workspace_dir}/datastack
-            echo "datastack contents:"
-            ls {workspace_dir}/datastack
+            rm datastack.tgz
             MODEL_ID=$(python -c "from natcap.invest import datastack; print(datastack.extract_parameter_set('{json_path}').model_id)")
-            echo "model ID:"
-            echo ${{MODEL_ID}}
             invest --debug --taskgraph-log-level=DEBUG run \
                 --datastack {json_path} \
                 --workspace {workspace_dir}/${{MODEL_ID}}_workspace \
