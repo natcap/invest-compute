@@ -112,7 +112,6 @@ class ValidateProcessor(BaseProcessor):
         output_filepath = Path(workspace_dir) / 'validation_results.json'
         with open(output_filepath) as file:
             json_output = json.loads(file.read())
-            print(json_output)
 
         with open(Path(workspace_dir) / 'results.json') as file:
             results = json.load(file)
@@ -126,6 +125,7 @@ class ValidateProcessor(BaseProcessor):
             })
         with open(Path(workspace_dir) / 'results.json', 'w') as file:
             json.dump(results, file)
+        output_filepath.unlink()  # delete the original validation json file
 
     def __repr__(self):
         return f'<InVESTValidateProcessor> {self.name}'
