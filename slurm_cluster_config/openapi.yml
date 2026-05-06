@@ -92,6 +92,18 @@ components:
         minimum: 0
         type: integer
       style: form
+    properties:
+      description: The properties that should be included. The parameter value is
+        a comma-separated list of property names.
+      explode: false
+      in: query
+      name: properties
+      required: false
+      schema:
+        items:
+          type: string
+        type: array
+      style: form
     resourceId:
       description: Configuration resource identifier
       in: path
@@ -173,8 +185,8 @@ components:
       type: object
 info:
   contact:
-    name: Natural Capital Project
-    url: https://naturalcapitalproject.stanford.edu/
+    name: Natural Capital Alliance
+    url: https://naturalcapitalalliance.stanford.edu/
     x-ogc-serviceContact:
       addresses: []
       emails:
@@ -187,7 +199,7 @@ info:
     url: https://github.com/natcap/invest?tab=Apache-2.0-1-ov-file#readme
   termsOfService: https://github.com/natcap/invest?tab=Apache-2.0-1-ov-file#readme
   title: pygeoapi InVEST
-  version: 0.21.0
+  version: 0.23.2
   x-keywords:
   - geospatial
   - data
@@ -285,7 +297,7 @@ paths:
       description: Retrieve job details
       operationId: getJob
       parameters:
-      # - *id001
+      - *id001
       - $ref: '#/components/parameters/f'
       responses:
         '200':
@@ -302,7 +314,7 @@ paths:
       description: Retrieve job results
       operationId: getJobResults
       parameters:
-      # - *id001
+      - *id001
       - $ref: '#/components/parameters/f'
       responses:
         '200':
@@ -439,6 +451,7 @@ paths:
         required: false
         schema:
           enum:
+          - respond-sync
           - respond-async
           type: string
       requestBody:
@@ -480,7 +493,7 @@ paths:
       - validate
 servers:
 - description: pygeoapi provides an API to geospatial data
-  url: http://localhost:5000
+  url: https://compute.naturalcapitalalliance.org
 tags:
 - description: pygeoapi provides an API to geospatial data
   externalDocs:

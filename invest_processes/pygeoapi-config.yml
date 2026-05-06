@@ -31,20 +31,20 @@ server:
     bind:
         host: 0.0.0.0
         port: 5000
-    url: http://localhost:5000
+    url: https://compute.naturalcapitalalliance.org
+    logo: https://compute.naturalcapitalalliance.org/static/img/natcap-alliance-logo-white.png
     mimetype: application/json; charset=UTF-8
     encoding: utf-8
     gzip: false
     languages:
         - en-US
-    # cors: true
     pretty_print: true
     limits:
         default_items: 20
         max_items: 50
-    # templates:
+    templates:
       # path: /path/to/Jinja2/templates
-      # static: /path/to/static/folder # css/js/img
+      static: /home/esoth_stanford_edu/invest-compute/invest_processes/static
     map:
         url: https://tile.openstreetmap.org/{z}/{x}/{y}.png
         attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
@@ -52,7 +52,6 @@ server:
         name: invest_processes.slurm_manager.SlurmManager
         connection: /tmp/pygeoapi-process-manager.db
         output_dir: /tmp/
-    # ogc_schemas_location: /opt/schemas.opengis.net
     admin: false # enable admin api
 
 logging:
@@ -77,20 +76,18 @@ metadata:
         name: Apache-2.0 license
         url: https://github.com/natcap/invest?tab=Apache-2.0-1-ov-file#readme
     provider:
-        name: Natural Capital Project
-        url: https://naturalcapitalproject.stanford.edu/
+        name: Natural Capital Alliance
+        url: https://naturalcapitalalliance.stanford.edu/
     contact:
-        name: Natural Capital Project software team
+        name: Natural Capital Alliance software team
         email: natcap-software@lists.stanford.edu
         role: pointOfContact
 
 resources:
-
     execute:
         type: process
         processor:
             name: invest_processes.execute.ExecuteProcessor
-
     validate:
         type: process
         processor:
