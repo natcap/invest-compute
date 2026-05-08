@@ -45,7 +45,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(job_response['status'], 'successful')
 
         results_endpoint_response = json.loads(self.client.get(
-            f'{job_url}/results?f=json').get_data(as_text=True))
+            f'/jobs/{job_id}/results?f=json').get_data(as_text=True))
         # in sync mode, the same results should be returned from the initial
         # execution endpoint and from any subsequent calls to the results endpoint
         self.assertEqual(execution_response, results_endpoint_response)
@@ -83,8 +83,8 @@ class PyGeoAPIServerTests(unittest.TestCase):
         # according to the OGC standard this should always be 'process'
         self.assertEqual(execution_response['type'], 'process')
         self.assertIn(
-            response.headers['Location'],
-            f'/jobs/{execution_response["jobID"]}')
+            f'/jobs/{execution_response["jobID"]}',
+            response.headers['Location'])
 
         # poll status until the job finishes
         # TODO: test with a longer running job
@@ -131,8 +131,8 @@ class PyGeoAPIServerTests(unittest.TestCase):
         # according to the OGC standard this should always be 'process'
         self.assertEqual(execution_response['type'], 'process')
         self.assertIn(
-            response.headers['Location'],
-            f'/jobs/{execution_response["jobID"]}')
+            f'/jobs/{execution_response["jobID"]}',
+            response.headers['Location'])
 
         # poll status until the job finishes
         # TODO: test with a longer running job
