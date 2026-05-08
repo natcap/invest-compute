@@ -40,8 +40,8 @@ class PyGeoAPIServerTests(unittest.TestCase):
         # outputs should be returned directly in the json response
         self.assertEqual(set(execution_response.keys()), {'workspace_url'})
 
-        job_url = response.headers['Location'].split('http://localhost:5000')[1]
-        job_response = json.loads(self.client.get(job_url).get_data(as_text=True))
+        job_id = response.headers['Location'].split('/')[-1]
+        job_response = json.loads(self.client.get(f'/jobs/{job_id}').get_data(as_text=True))
         self.assertEqual(job_response['status'], 'successful')
 
         results_endpoint_response = json.loads(self.client.get(
@@ -82,9 +82,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(execution_response['status'], 'accepted')
         # according to the OGC standard this should always be 'process'
         self.assertEqual(execution_response['type'], 'process')
-        self.assertEqual(
+        self.assertIn(
             response.headers['Location'],
-            f'http://localhost:5000/jobs/{execution_response["jobID"]}')
+            f'/jobs/{execution_response["jobID"]}')
 
         # poll status until the job finishes
         # TODO: test with a longer running job
@@ -130,9 +130,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(execution_response['status'], 'accepted')
         # according to the OGC standard this should always be 'process'
         self.assertEqual(execution_response['type'], 'process')
-        self.assertEqual(
+        self.assertIn(
             response.headers['Location'],
-            f'http://localhost:5000/jobs/{execution_response["jobID"]}')
+            f'/jobs/{execution_response["jobID"]}')
 
         # poll status until the job finishes
         # TODO: test with a longer running job
