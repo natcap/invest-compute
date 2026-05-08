@@ -100,6 +100,20 @@ paths:
       summary: API conformance definition
       tags:
         - server
+  /static/css/default.css:
+    get:
+      x-google-backend: invest_compute_backend
+      description: Return a CSS style sheet
+      operationId: getCSS
+      responses:
+        '200':
+          description: OK
+          content:
+            text/css:
+              schema:
+                type: string
+                format: binary
+      summary: Return a CSS style sheet
   /static/img/pygeoapi.png:
     get:
       x-google-backend: invest_compute_backend
@@ -257,7 +271,7 @@ paths:
       summary: Processes
       tags:
         - server
-  /processes/execute:
+  /processes/invest-execute:
     get:
       x-google-backend: invest_compute_backend
       description: A process that executes an InVEST model.
@@ -272,7 +286,7 @@ paths:
       summary: Get process metadata
       tags:
         - execute
-  /processes/execute/execution:
+  /processes/invest-execute/execution:
     post:
       x-google-backend: invest_compute_backend
       description: A process that executes an InVEST model.
@@ -316,7 +330,7 @@ paths:
       summary: Process InVEST Execute execution
       tags:
         - execute
-  /processes/validate:
+  /processes/invest-validate:
     get:
       x-google-backend: invest_compute_backend
       description: A process that validates inputs to an InVEST model.
@@ -331,7 +345,7 @@ paths:
       summary: Get process metadata
       tags:
         - validate
-  /processes/validate/execution:
+  /processes/invest-validate/execution:
     post:
       x-google-backend: invest_compute_backend
       description: A process that validates inputs to an InVEST model.

@@ -43,7 +43,7 @@ server:
         default_items: 20
         max_items: 50
     templates:
-      # path: /path/to/Jinja2/templates
+      path: /home/esoth_stanford_edu/invest-compute/invest_processes/templates
       static: /home/esoth_stanford_edu/invest-compute/invest_processes/static
     map:
         url: https://tile.openstreetmap.org/{z}/{x}/{y}.png
@@ -61,20 +61,20 @@ logging:
 metadata:
     identification:
         title:
-            en: pygeoapi InVEST
+            en: InVEST Compute
         description:
-            en: pygeoapi provides an API to geospatial data
+            en: run InVEST models in the cloud
         keywords:
             en:
                 - geospatial
                 - data
                 - api
         keywords_type: theme
-        terms_of_service: https://github.com/natcap/invest?tab=Apache-2.0-1-ov-file#readme
-        url: https://example.org
+        terms_of_service: https://github.com/natcap/invest-compute?tab=Apache-2.0-1-ov-file#readme
+        url: https://github.com/natcap/invest-compute
     license:
         name: Apache-2.0 license
-        url: https://github.com/natcap/invest?tab=Apache-2.0-1-ov-file#readme
+        url: https://github.com/natcap/invest-compute?tab=Apache-2.0-1-ov-file#readme
     provider:
         name: Natural Capital Alliance
         url: https://naturalcapitalalliance.stanford.edu/
@@ -84,11 +84,11 @@ metadata:
         role: pointOfContact
 
 resources:
-    execute:
+    invest-execute:
         type: process
         processor:
             name: invest_processes.execute.ExecuteProcessor
-    validate:
+    invest-validate:
         type: process
         processor:
             name: invest_processes.validate.ValidateProcessor
