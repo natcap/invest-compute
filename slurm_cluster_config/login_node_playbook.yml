@@ -44,10 +44,9 @@
 
     - name: Install and launch server
       args:
+        chdir: invest-compute/invest_processes
         executable: /bin/bash # Ensure bash is used for shell hooks
       ansible.builtin.shell: |
-        cd invest_compute/invest_processes
-
         # install micromamba
         rm -f bin/micromamba
         curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba

@@ -24,12 +24,12 @@ class PyGeoAPIServerTests(unittest.TestCase):
         shutil.rmtree(self.workspace_dir)
 
     def testExecuteProcessMetadata(self):
-        response = self.client.get('/processes/execute')
+        response = self.client.get('/processes/invest-execute')
         self.assertEqual(response.status_code, 200)
 
     def testExecuteProcessExecutionSync(self):
         """Test execution of the 'execute' process in sync mode."""
-        response = self.client.post('/processes/execute/execution', json={
+        response = self.client.post('/processes/invest-execute/execution', json={
             'inputs': {
                 'datastack_url': CARBON_DATASTACK_URL
             }
@@ -40,12 +40,12 @@ class PyGeoAPIServerTests(unittest.TestCase):
         # outputs should be returned directly in the json response
         self.assertEqual(set(execution_response.keys()), {'workspace_url'})
 
-        job_url = response.headers['Location'].split('http://localhost:5000')[1]
-        job_response = json.loads(self.client.get(job_url).get_data(as_text=True))
+        job_id = response.headers['Location'].split('/')[-1]
+        job_response = json.loads(self.client.get(f'/jobs/{job_id}').get_data(as_text=True))
         self.assertEqual(job_response['status'], 'successful')
 
         results_endpoint_response = json.loads(self.client.get(
-            f'{job_url}/results?f=json').get_data(as_text=True))
+            f'/jobs/{job_id}/results?f=json').get_data(as_text=True))
         # in sync mode, the same results should be returned from the initial
         # execution endpoint and from any subsequent calls to the results endpoint
         self.assertEqual(execution_response, results_endpoint_response)
@@ -72,7 +72,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
     def testExecuteProcessExecutionAsync(self):
         """Test execution of the 'execute' process in async mode."""
         response = self.client.post(
-            '/processes/execute/execution',
+            '/processes/invest-execute/execution',
             json={'inputs': {'datastack_url': CARBON_DATASTACK_URL}},
             headers={'Prefer': 'respond-async'}
         )
@@ -82,9 +82,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(execution_response['status'], 'accepted')
         # according to the OGC standard this should always be 'process'
         self.assertEqual(execution_response['type'], 'process')
-        self.assertEqual(
-            response.headers['Location'],
-            f'http://localhost:5000/jobs/{execution_response["jobID"]}')
+        self.assertIn(
+            f'/jobs/{execution_response["jobID"]}',
+            response.headers['Location'])
 
         # poll status until the job finishes
         # TODO: test with a longer running job
@@ -120,7 +120,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
     def testExecuteProcessExecutionSlowAsync(self):
         """Test execution in async mode with a longer-running job."""
         response = self.client.post(
-            '/processes/execute/execution',
+            '/processes/invest-execute/execution',
             json={'inputs': {'datastack_url': SQ_DATASTACK_URL}},
             headers={'Prefer': 'respond-async'}
         )
@@ -130,9 +130,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(execution_response['status'], 'accepted')
         # according to the OGC standard this should always be 'process'
         self.assertEqual(execution_response['type'], 'process')
-        self.assertEqual(
-            response.headers['Location'],
-            f'http://localhost:5000/jobs/{execution_response["jobID"]}')
+        self.assertIn(
+            f'/jobs/{execution_response["jobID"]}',
+            response.headers['Location'])
 
         # poll status until the job finishes
         # TODO: test with a longer running job
@@ -170,7 +170,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
     def testExecuteProcessErrorSync(self):
         """Test executing a datastack that should cause a model error."""
         response = self.client.post(
-            '/processes/execute/execution',
+            '/processes/invest-execute/execution',
             json={'inputs': {'datastack_url': ERROR_DATASTACK_URL}}
         )
         data = json.loads(response.get_data(as_text=True))
@@ -203,12 +203,12 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 err_log.read())
 
     def testValidateProcessMetadata(self):
-        response = self.client.get('/processes/validate')
+        response = self.client.get('/processes/invest-validate')
         self.assertEqual(response.status_code, 200)
 
     def testValidateProcessExecutionSync(self):
         """Validation of a datastack should return validation messages"""
-        response = self.client.post('/processes/validate/execution', json={
+        response = self.client.post('/processes/invest-validate/execution', json={
             'inputs': {
                 'datastack_url': CARBON_DATASTACK_URL
             }

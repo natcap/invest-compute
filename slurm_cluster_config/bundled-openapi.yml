@@ -9,27 +9,25 @@ info:
         - value: natcap-software@lists.stanford.edu
       hoursOfService: pointOfContact
       name: Natural Capital Project software team
-  description: pygeoapi provides an API to geospatial data
+  description: run InVEST models in the cloud
   license:
     name: Apache-2.0 license
-    url: https://github.com/natcap/invest?tab=Apache-2.0-1-ov-file#readme
-  termsOfService: https://github.com/natcap/invest?tab=Apache-2.0-1-ov-file#readme
-  title: pygeoapi InVEST
-  version: 0.21.0
+    url: https://github.com/natcap/invest-compute?tab=Apache-2.0-1-ov-file#readme
+  termsOfService: https://github.com/natcap/invest-compute?tab=Apache-2.0-1-ov-file#readme
+  title: InVEST Compute
+  version: 0.1.0
   x-keywords:
     - geospatial
     - data
     - api
-security:
-  - ApiKeyAuth: []  # require authentication with api key for all requests
 servers:
-  - description: pygeoapi provides an API to geospatial data
-    url: http://localhost:5000
+  - description: run InVEST models in the cloud
+    url: https://compute.naturalcapitalalliance.org
 tags:
-  - description: pygeoapi provides an API to geospatial data
+  - description: run InVEST models in the cloud
     externalDocs:
       description: information
-      url: https://example.org
+      url: https://github.com/natcap/invest-compute
     name: server
   - name: coverages
   - name: edr
@@ -44,7 +42,7 @@ x-google-api-management:
   backends:
     invest_compute_backend:
       # point to the Cloud Run service URL
-      # this template placeholder gets filled in by lb.tf
+      # this template placeholder gets filled in by server_interface.tf
       address: ${backend_url}
       pathTranslation: APPEND_PATH_TO_ADDRESS
 paths:
@@ -102,6 +100,48 @@ paths:
       summary: API conformance definition
       tags:
         - server
+  /static/css/default.css:
+    get:
+      x-google-backend: invest_compute_backend
+      description: Return a CSS style sheet
+      operationId: getCSS
+      responses:
+        '200':
+          description: OK
+          content:
+            text/css:
+              schema:
+                type: string
+                format: binary
+      summary: Return a CSS style sheet
+  /static/img/pygeoapi.png:
+    get:
+      x-google-backend: invest_compute_backend
+      description: Return a pygeoapi logo PNG image
+      operationId: getPygeoapiLogo
+      responses:
+        '200':
+          description: OK
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+      summary: Return a pygeoapi logo PNG image
+  /static/img/natcap-alliance-logo-white.png:
+    get:
+      x-google-backend: invest_compute_backend
+      description: Return a natcap logo PNG image
+      operationId: getNatCapLogo
+      responses:
+        '200':
+          description: OK
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+      summary: Return a natcap logo PNG image
   /jobs:
     get:
       x-google-backend: invest_compute_backend
@@ -136,6 +176,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         default:
           $ref: '#/components/responses/default'
+      security:
+        - ApiKeyAuth: []  # require authentication with api key
       summary: Cancel / delete job
       tags:
         - jobs
@@ -229,7 +271,7 @@ paths:
       summary: Processes
       tags:
         - server
-  /processes/execute:
+  /processes/invest-execute:
     get:
       x-google-backend: invest_compute_backend
       description: A process that executes an InVEST model.
@@ -244,7 +286,7 @@ paths:
       summary: Get process metadata
       tags:
         - execute
-  /processes/execute/execution:
+  /processes/invest-execute/execution:
     post:
       x-google-backend: invest_compute_backend
       description: A process that executes an InVEST model.
@@ -283,10 +325,12 @@ paths:
           $ref: '#/components/responses/ServerError-2'
         default:
           $ref: '#/components/responses/default'
+      security:
+        - ApiKeyAuth: []  # require authentication with api key
       summary: Process InVEST Execute execution
       tags:
         - execute
-  /processes/validate:
+  /processes/invest-validate:
     get:
       x-google-backend: invest_compute_backend
       description: A process that validates inputs to an InVEST model.
@@ -301,7 +345,7 @@ paths:
       summary: Get process metadata
       tags:
         - validate
-  /processes/validate/execution:
+  /processes/invest-validate/execution:
     post:
       x-google-backend: invest_compute_backend
       description: A process that validates inputs to an InVEST model.
@@ -349,6 +393,8 @@ paths:
           $ref: '#/components/responses/ServerError-2'
         default:
           $ref: '#/components/responses/default'
+      security:
+        - ApiKeyAuth: []  # require authentication with api key
       summary: Process InVEST Validate execution
       tags:
         - validate

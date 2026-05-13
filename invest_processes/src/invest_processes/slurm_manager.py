@@ -25,6 +25,25 @@ BUCKET = STORAGE_CLIENT.bucket(BUCKET_NAME)
 WORKSPACE_ROOT = 'workspaces'
 os.makedirs(WORKSPACE_ROOT, exist_ok=True)
 
+# Map slurm job statuses to OGC Process job statuses
+# According to the Processes standard, job statuses may be
+# 'accepted', 'running', 'successful', 'failed', or 'dismissed'.
+# Slurm statuses are as defined here: https://slurm.schedmd.com/job_state_codes.html
+JOB_STATUS_MAP = {
+    'BOOT_FAIL': JobStatus.failed,      # terminated due to node boot failure
+    'CANCELLED': JobStatus.dismissed,   # cancelled by user or administrator
+    'COMPLETED': JobStatus.successful,  # completed execution successfully; finished with an exit code of zero on all nodes
+    'DEADLINE': JobStatus.failed,       # terminated due to reaching the latest start time that allows the job to reach its deadline given its TimeLimit
+    'FAILED': JobStatus.failed,         # completed execution unsuccessfully; non-zero exit code or other failure condition
+    'NODE_FAIL': JobStatus.failed,      # terminated due to node failure
+    'OUT_OF_MEMORY': JobStatus.failed,  # experienced out of memory error
+    'PENDING': JobStatus.accepted,      # queued and waiting for initiation; will typically have a reason code specifying why it has not yet started
+    'PREEMPTED': JobStatus.dismissed,   # terminated due to preemption; may transition to another state based on the configured PreemptMode and job characteristics
+    'RUNNING': JobStatus.running,       # allocated resources and executing
+    'SUSPENDED': JobStatus.dismissed,   # allocated resources but execution suspended, such as from preemption or a direct request from an authorized user
+    'TIMEOUT': JobStatus.failed         # terminated due to reaching the time limit, such as those configured in slurm.conf or specified for the individual job
+}
+
 
 def upload_directory_to_bucket(dir_path):
     """Upload everything in a given directory to the GCP bucket.
@@ -76,7 +95,52 @@ class SlurmManager(BaseManager):
         :returns: dict of list of jobs (identifier, status, process identifier)
                   and numberMatched
         """
-        raise NotImplementedError()
+        # must override the default start time limit to get all jobs
+        # for some reason, 1970 doesn't work, but 1971 does
+        sacct_command = [
+            'sacct', '-X', '--noheader',
+            '--starttime', '1971-01-01',
+            '--format', 'JobID,State,Submit,Start,End']
+        LOGGER.debug('Calling sacct: ' + ' '.join(sacct_command))
+        output_lines = subprocess.run(
+            sacct_command, capture_output=True, text=True, check=True
+        ).stdout.strip().split('\n')
+        LOGGER.debug(f'stdout from sacct command: {output_lines}')
+
+        jobs = []
+        for line in output_lines:
+            job_id, job_status, submit_time, start_time, end_time = line.split()
+            if status and job_status != status:
+                continue
+            # append Z (UTC) because pygeoapi requires the timezone.
+            # slurm uses the system timezone, which should be UTC.
+            submit_time = f'{submit_time}Z'
+            start_time = '' if start_time == 'Unknown' else f'{start_time}Z'
+            end_time = '' if end_time == 'Unknown' else f'{end_time}Z'
+
+            job_metadata = self.get_job_metadata(job_id)
+            jobs.append({
+                "type": "process",
+                "identifier": job_id,
+                "process_id": job_metadata.get('process_id', '?'),
+                "location": job_metadata.get('results_path', '?'),
+                "created": submit_time,
+                "started": start_time,
+                "finished": end_time,
+                "updated": submit_time,
+                "status": JOB_STATUS_MAP[job_status].value,
+                "mimetype": "application/json",
+                "message": "",
+                "progress": -1
+            })
+        LOGGER.debug(jobs)
+
+        number_matched = len(jobs)
+        if offset:
+            jobs = jobs[offset:]
+        if limit:
+            jobs = jobs[:limit]
+        return {'jobs': jobs, 'numberMatched': number_matched}
 
     def add_job(self, job_metadata: dict) -> str:
         """
@@ -115,32 +179,13 @@ class SlurmManager(BaseManager):
         if not status:
             return None
 
-        # Map slurm job statuses to OGC Process job statuses
-        # According to the Processes standard, job statuses may be
-        # 'accepted', 'running', 'successful', 'failed', or 'dismissed'.
-        # Slurm statuses are as defined here: https://slurm.schedmd.com/job_state_codes.html
-        status_map = {
-            'BOOT_FAIL': JobStatus.failed,      # terminated due to node boot failure
-            'CANCELLED': JobStatus.dismissed,   # cancelled by user or administrator
-            'COMPLETED': JobStatus.successful,  # completed execution successfully; finished with an exit code of zero on all nodes
-            'DEADLINE': JobStatus.failed,       # terminated due to reaching the latest start time that allows the job to reach its deadline given its TimeLimit
-            'FAILED': JobStatus.failed,         # completed execution unsuccessfully; non-zero exit code or other failure condition
-            'NODE_FAIL': JobStatus.failed,      # terminated due to node failure
-            'OUT_OF_MEMORY': JobStatus.failed,  # experienced out of memory error
-            'PENDING': JobStatus.accepted,      # queued and waiting for initiation; will typically have a reason code specifying why it has not yet started
-            'PREEMPTED': JobStatus.dismissed,   # terminated due to preemption; may transition to another state based on the configured PreemptMode and job characteristics
-            'RUNNING': JobStatus.running,       # allocated resources and executing
-            'SUSPENDED': JobStatus.dismissed,   # allocated resources but execution suspended, such as from preemption or a direct request from an authorized user
-            'TIMEOUT': JobStatus.failed         # terminated due to reaching the time limit, such as those configured in slurm.conf or specified for the individual job
-        }
-
         # return as if successful in case of failure so that error details
         # can be returned. The user will need to check the logs to confirm
         # whether the model actually succeeded or not.
         # https://github.com/geopython/pygeoapi/issues/2203
-        if status_map[status] == JobStatus.failed:
+        if JOB_STATUS_MAP[status] == JobStatus.failed:
             return JobStatus.successful
-        return status_map[status]
+        return JOB_STATUS_MAP[status]
 
     def get_scontrol_data(self, job_id, field_name):
         """Get a slurm job data field value using the scontrol command.
@@ -202,17 +247,25 @@ class SlurmManager(BaseManager):
             # increase returned field width up to 1000 characters
             comment_string = self.get_sacct_data(job_id, 'Comment%1000')
         if not comment_string:
-            raise ValueError('job comment not found by scontrol or sacct')
+            LOGGER.error('job comment not found by scontrol or sacct')
+            return {}
         return json.loads(comment_string)
 
     def get_job_submit_time(self, job_id):
-        return self.get_sacct_data(job_id, 'Submit')
+        return f'{self.get_sacct_data(job_id, 'Submit')}Z'
 
     def get_job_start_time(self, job_id):
-        return self.get_sacct_data(job_id, 'Start')
+        start_time = self.get_sacct_data(job_id, 'Start')
+        if start_time == 'Unknown':  # for jobs that have not started yet
+            return ''
+        return f'{start_time}Z'
 
     def get_job_end_time(self, job_id):
-        return self.get_sacct_data(job_id, 'End')
+        end_time = self.get_sacct_data(job_id, 'End')
+        if end_time == 'Unknown':  # for jobs that have not finished yet
+            return ''
+        return f'{end_time}Z'
+
 
     def get_job(self, job_id: str) -> dict:
         """
