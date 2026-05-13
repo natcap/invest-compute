@@ -42,7 +42,7 @@ server:
     limits:
         default_items: 20
         max_items: 50
-    templates:
+    templates:  # these are absolute paths on the server. ~ or relative paths don't seem to work.
       path: /home/esoth_stanford_edu/invest-compute/invest_processes/templates
       static: /home/esoth_stanford_edu/invest-compute/invest_processes/static
     map:

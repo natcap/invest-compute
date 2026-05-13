@@ -112,7 +112,8 @@ class SlurmManager(BaseManager):
             job_id, job_status, submit_time, start_time, end_time = line.split()
             if status and job_status != status:
                 continue
-            # append Z (UTC) because pygeoapi requires the timezone
+            # append Z (UTC) because pygeoapi requires the timezone.
+            # slurm uses the system timezone, which should be UTC.
             submit_time = f'{submit_time}Z'
             start_time = '' if start_time == 'Unknown' else f'{start_time}Z'
             end_time = '' if end_time == 'Unknown' else f'{end_time}Z'
