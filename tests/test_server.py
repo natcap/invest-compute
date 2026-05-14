@@ -242,6 +242,19 @@ class PyGeoAPIServerTests(unittest.TestCase):
             }
         )
 
+    def testGetJobResults(self):
+        response = self.client.post('/processes/invest-execute/execution', json={
+            'inputs': {
+                'datastack_url': ERROR_DATASTACK_URL
+            }
+        })
+        self.assertEqual(response.status_code, 200)
+
+        job_id = response.headers['Location'].split('/')[-1]
+        job_result = json.loads(self.client.get(f'/jobs/{job_id}/results').get_data(as_text=True))
+        print('result:', job_result)
+
+
 
 class UtilsTests(unittest.TestCase):
 

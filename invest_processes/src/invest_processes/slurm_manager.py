@@ -9,6 +9,7 @@ import time
 from typing import Any, Optional, Tuple
 
 from google.cloud import storage
+import pygeoapi.api.processes
 from pygeoapi.process.manager.base import BaseManager
 from pygeoapi.util import (
     JobStatus,
@@ -44,6 +45,93 @@ JOB_STATUS_MAP = {
     'TIMEOUT': JobStatus.failed         # terminated due to reaching the time limit, such as those configured in slurm.conf or specified for the individual job
 }
 
+# monkeypatch pygeoapi.api.processes.get_job_result
+# to enable returning custom error details
+def get_job_result(api: API, request: APIRequest,
+                   job_id: str) -> Tuple[dict, int, str]:
+    """
+    Get result of job (instance of a process)
+
+    :param request: A request object
+    :param job_id: ID of job
+
+    :returns: tuple of headers, status code, content
+    """
+    headers = request.get_response_headers(pygeoapi.api.SYSTEM_LOCALE,
+                                           **api.api_headers)
+
+    try:
+        job = api.manager.get_job(job_id)
+    except JobNotFoundError:
+        return api.get_exception(
+            HTTPStatus.NOT_FOUND, headers,
+            request.format, 'NoSuchJob', job_id
+        )
+
+
+    if job['status'] == JobStatus.running:
+        msg = 'job still running'
+        return api.get_exception(
+            HTTPStatus.NOT_FOUND, headers,
+            request.format, 'ResultNotReady', msg)
+
+    elif job['status'] == JobStatus.accepted:
+        # NOTE: this case is not mentioned in the specification
+        msg = 'job accepted but not yet running'
+        return api.get_exception(
+            HTTPStatus.NOT_FOUND, headers,
+            request.format, 'ResultNotReady', msg)
+
+    try:
+        mimetype, job_output = api.manager.get_job_result(job_id)
+    except JobResultNotFoundError:
+        return api.get_exception(
+            HTTPStatus.INTERNAL_SERVER_ERROR, headers,
+            request.format, 'JobResultNotFound', job_id
+        )
+
+    if job['status'] == JobStatus.failed:
+        http_status = HTTPStatus.BAD_REQUEST
+    else:
+        http_status = HTTPStatus.OK
+
+        # exception = {
+        #     'code': 'InvalidParameterValue',
+        #     'type': 'InvalidParameterValue',
+        #     'description': 'job failed'
+        # }
+        # if request.format == F_HTML:
+        #     headers['Content-Type'] = FORMAT_TYPES[F_HTML]
+        #     content = render_j2_template(
+        #         api.tpl_config, api.config['server']['templates'],
+        #         'exception.html', exception, SYSTEM_LOCALE)
+        # else:
+        #     content = pygeoapi.util.to_json(exception, api.pretty_print)
+
+        # return headers, HTTPStatus.BAD_REQUEST, content
+
+
+    if mimetype not in (None, FORMAT_TYPES[F_JSON]):
+        headers['Content-Type'] = mimetype
+        content = job_output
+    else:
+        if request.format == F_JSON:
+            content = json.dumps(job_output, sort_keys=True, indent=4,
+                                 default=json_serial)
+        else:
+            # HTML
+            headers['Content-Type'] = "text/html"
+            data = {
+                'job': {'id': job_id},
+                'result': job_output
+            }
+            content = render_j2_template(
+                api.config, api.config['server']['templates'],
+                'jobs/results/index.html', data, request.locale)
+
+    return headers, http_status, content
+
+pygeoapi.api.processes.get_job_result = get_job_result
 
 def upload_directory_to_bucket(dir_path):
     """Upload everything in a given directory to the GCP bucket.
@@ -178,13 +266,6 @@ class SlurmManager(BaseManager):
         LOGGER.debug(f'Status of slurm job {job_id}: {status}')
         if not status:
             return None
-
-        # return as if successful in case of failure so that error details
-        # can be returned. The user will need to check the logs to confirm
-        # whether the model actually succeeded or not.
-        # https://github.com/geopython/pygeoapi/issues/2203
-        if JOB_STATUS_MAP[status] == JobStatus.failed:
-            return JobStatus.successful
         return JOB_STATUS_MAP[status]
 
     def get_scontrol_data(self, job_id, field_name):
@@ -321,10 +402,12 @@ class SlurmManager(BaseManager):
         :returns: `tuple` of mimetype and raw output
         """
         job_info = self.get_job(job_id)
-        if job_info['status'] != JobStatus.successful.value:
-            return (None,)
-        with open(job_info["location"], "r") as file:
-            data = json.load(file)
+        try:
+            with open(job_info["location"], "r") as file:
+                data = json.load(file)
+        except Exception as ex:
+            LOGGER.error('Error getting job result:', ex)
+            raise JobResultNotFoundError
         return job_info["mimetype"], data
 
     def delete_job(self, job_id: str) -> bool:
