@@ -111,11 +111,11 @@ def get_job_result(api, request, job_id):
         # return headers, HTTPStatus.BAD_REQUEST, content
 
 
-    if mimetype not in (None, FORMAT_TYPES[F_JSON]):
+    if mimetype not in (None, 'application/json'):
         headers['Content-Type'] = mimetype
         content = job_output
     else:
-        if request.format == F_JSON:
+        if request.format == 'application/json':
             content = json.dumps(job_output, sort_keys=True, indent=4,
                                  default=json_serial)
         else:
