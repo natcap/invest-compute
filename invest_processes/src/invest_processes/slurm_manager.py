@@ -16,7 +16,8 @@ from pygeoapi.util import (
     JobStatus,
     ProcessExecutionMode,
     RequestedProcessExecutionMode,
-    RequestedResponse
+    RequestedResponse,
+    render_j2_template
 )
 
 LOGGER = logging.getLogger(__name__)
