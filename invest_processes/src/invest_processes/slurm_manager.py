@@ -47,8 +47,7 @@ JOB_STATUS_MAP = {
 
 # monkeypatch pygeoapi.api.processes.get_job_result
 # to enable returning custom error details
-def get_job_result(api: API, request: APIRequest,
-                   job_id: str) -> Tuple[dict, int, str]:
+def get_job_result(api, request, job_id):
     """
     Get result of job (instance of a process)
 
