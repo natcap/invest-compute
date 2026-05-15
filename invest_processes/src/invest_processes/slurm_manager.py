@@ -60,6 +60,7 @@ def get_job_result(api, request, job_id):
     """
     headers = request.get_response_headers(pygeoapi.api.SYSTEM_LOCALE,
                                            **api.api_headers)
+    print('request format', request.format)
 
     try:
         job = api.manager.get_job(job_id)
@@ -129,6 +130,8 @@ def get_job_result(api, request, job_id):
             content = render_j2_template(
                 api.config, api.config['server']['templates'],
                 'jobs/results/index.html', data, request.locale)
+
+    print('content:', content)
 
     return headers, http_status, content
 
