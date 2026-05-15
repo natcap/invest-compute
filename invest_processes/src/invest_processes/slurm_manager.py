@@ -218,7 +218,7 @@ class SlurmManager(BaseManager):
                 "type": "process",
                 "identifier": job_id,
                 "process_id": job_metadata.get('process_id', '?'),
-                "location": job_metadata.get('results_path', '?'),
+                "location": job_metadata.get('results_url', '?'),
                 "created": submit_time,
                 "started": start_time,
                 "finished": end_time,
@@ -385,7 +385,7 @@ class SlurmManager(BaseManager):
             "type": "process",
             "identifier": job_id,
             "process_id": job_metadata['process_id'],
-            "location": job_metadata['results_path'],
+            "location": job_metadata['results_url'],
             "created": self.get_job_submit_time(job_id),
             "started": self.get_job_start_time(job_id),
             "finished": self.get_job_end_time(job_id),
@@ -409,13 +409,7 @@ class SlurmManager(BaseManager):
         :returns: `tuple` of mimetype and raw output
         """
         job_info = self.get_job(job_id)
-        try:
-            with open(job_info["location"], "r") as file:
-                data = json.load(file)
-        except Exception as ex:
-            LOGGER.error('Error getting job result:', ex)
-            raise JobResultNotFoundError
-        return job_info["mimetype"], data
+        return job_info["mimetype"], {'workspace_url': job_info["location"]}
 
     def delete_job(self, job_id: str) -> bool:
         """
@@ -707,6 +701,7 @@ class SlurmManager(BaseManager):
         job_metadata = json.dumps({
             'workspace_dir': workspace_dir,
             'results_path': str(Path(workspace_dir) / 'results.json'),
+            'results_url': f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}',
             'process_id': processor.metadata['id']
         })
 
