@@ -245,7 +245,8 @@ class PyGeoAPIServerTests(unittest.TestCase):
     def testGetSyncJobResults(self):
         response = self.client.post(
             '/processes/invest-execute/execution',
-            json={'inputs': {'datastack_url': ERROR_DATASTACK_URL}}
+            json={'inputs': {'datastack_url': ERROR_DATASTACK_URL}},
+            query_parameters={'f': 'json'}
         )
         # self.assertEqual(response.status_code, 200)
 
@@ -257,7 +258,8 @@ class PyGeoAPIServerTests(unittest.TestCase):
         response = self.client.post(
             '/processes/invest-execute/execution',
             json={'inputs': {'datastack_url': ERROR_DATASTACK_URL}},
-            headers={'Prefer': 'respond-async'}
+            headers={'Prefer': 'respond-async'},
+            query_parameters={'f': 'json'}
         )
         self.assertEqual(response.status_code, 200)
 
