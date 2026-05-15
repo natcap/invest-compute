@@ -11,6 +11,8 @@ from typing import Any, Optional, Tuple
 
 from google.cloud import storage
 import pygeoapi.api.processes
+from pygeoapi.process.base import JobNotFoundError
+from pygeoapi.process.base import JobResultNotFoundError
 from pygeoapi.process.manager.base import BaseManager
 from pygeoapi.util import (
     JobStatus,

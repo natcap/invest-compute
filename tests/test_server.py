@@ -213,11 +213,10 @@ class PyGeoAPIServerTests(unittest.TestCase):
         data = json.loads(response.get_data(as_text=True))
         self.assertEqual(response.status_code, 201)
 
-        response = self.client.get(
-            f'/jobs/{data["jobID"]}/results?f=json').get_data(as_text=True)
+        response = self.client.get(f'/jobs/{data["jobID"]}/results?f=json')
         # if job errored, should return a 400 response with the workspace url
         self.assertEqual(response.status_code, 400)
-        data = json.loads(response)
+        data = json.loads(response.get_data(as_text=True))
         self.assertEqual(set(data.keys()), {'workspace_url'})
 
         local_dest_path = os.path.join(self.workspace_dir, 'results')
