@@ -251,7 +251,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
         # self.assertEqual(response.status_code, 200)
 
         job_id = response.headers['Location'].split('/')[-1]
-        job_result = json.loads(self.client.get(f'/jobs/{job_id}/results').get_data(as_text=True))
+        response = self.client.get(f'/jobs/{job_id}/results?f=json').get_data(as_text=True)
+        print('response:', response)
+        job_result = json.loads(response)
         print('result:', job_result)
 
     def testGetAsyncJobResults(self):
@@ -264,7 +266,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
 
         job_id = response.headers['Location'].split('/')[-1]
-        job_result = json.loads(self.client.get(f'/jobs/{job_id}/results').get_data(as_text=True))
+        response = self.client.get(f'/jobs/{job_id}/results?f=json').get_data(as_text=True)
+        print('response:', response)
+        job_result = json.loads(response)
         print('result:', job_result)
 
 
