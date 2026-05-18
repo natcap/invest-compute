@@ -213,6 +213,13 @@ class PyGeoAPIServerTests(unittest.TestCase):
         data = json.loads(response.get_data(as_text=True))
         self.assertEqual(response.status_code, 201)
 
+        while True:
+            response = json.loads(self.client.get(
+                f'/jobs/{data["jobID"]}').get_data(as_text=True))
+            if response['status'] not in {'accepted', 'running'}:
+                break
+            time.sleep(1)
+
         response = self.client.get(f'/jobs/{data["jobID"]}/results?f=json')
         # if job errored, should return a 400 response with the workspace url
         self.assertEqual(response.status_code, 400)
