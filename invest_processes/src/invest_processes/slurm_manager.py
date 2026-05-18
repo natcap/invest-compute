@@ -103,7 +103,7 @@ def get_job_result(api, request, job_id):
             'description': 'The job exited with an error. Please download the logs from the workspace to identify the problem.',
             'workspace_url': job_output['workspace_url']
         }
-        if request.format == F_HTML:
+        if request.format == 'html':
             headers['Content-Type'] = "text/html"
             content = render_j2_template(
                 config=api.tpl_config,
@@ -116,7 +116,7 @@ def get_job_result(api, request, job_id):
         return headers, HTTPStatus.BAD_REQUEST, content
     else:  # success
         _, job_output = api.manager.get_job_result(job_id)
-        if request.format == F_HTML:
+        if request.format == 'html':
             headers['Content-Type'] = "text/html"
             content = render_j2_template(
                 config=api.config,
