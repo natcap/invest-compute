@@ -371,7 +371,7 @@ class SlurmManager(BaseManager):
         :returns: `dict` of job result
         """
         job_metadata = self.get_job_metadata(job_id)
-        job_status = self.get_job_status(job_id)
+        job_status = JobStatus(self.get_job_status(job_id))
 
         # After the job finishes, we need to wait for the workspace to finish
         # uploading to the bucket. After uploading has finished, we create a
