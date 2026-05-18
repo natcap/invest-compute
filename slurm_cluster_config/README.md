@@ -19,6 +19,7 @@ Copy the additional terraform code into that directory:
 ```
 cp server_interface.tf hpc-slurm/primary
 cp providers.tf hpc-slurm/primary  # overwrite the existing providers.tf
+cp versions.tf hpc-slurm/primary
 ```
 
 To deploy:

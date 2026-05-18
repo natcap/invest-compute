@@ -11,6 +11,7 @@ resource "google_project_service" "enable_services" {
   for_each = toset([
     "apigateway.googleapis.com",
     "apikeys.googleapis.com",
+    "cloudbuild.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "run.googleapis.com",
     "secretmanager.googleapis.com",
@@ -19,6 +20,30 @@ resource "google_project_service" "enable_services" {
   ])
   service            = each.key
   disable_on_destroy = false
+}
+
+# Enable OS login for all VMs -------------------------------------------------
+resource "google_compute_project_metadata" "default" {
+  metadata = {
+    enable-oslogin = "TRUE"
+  }
+}
+
+# Docker container ------------------------------------------------------------
+
+# 1. Create the Artifact Registry Repository
+resource "google_artifact_registry_repository" "my_repo" {
+  location      = "us-central1"
+  repository_id = "my-docker-repo"
+  description   = "Docker repository for my local images"
+  format        = "DOCKER"
+}
+
+locals {
+  # Calculate a SHA1 hash of all files in the source directory
+  app_dir_sha1 = sha1(join("", [
+    for f in fileset(path.module, "../../../invest_processes/**") : filesha1(f)
+  ]))
 }
 
 
@@ -36,50 +61,113 @@ resource "google_service_account" "cloud_run_sa" {
   display_name = "Service Account for Cloud Run"
 }
 
-# Grant it access to the nginx Secret
-resource "google_secret_manager_secret_iam_member" "cloud_run_secret_access" {
-  project   = var.project_id
-  secret_id = google_secret_manager_secret.nginx_config.secret_id
-  role      = "roles/secretmanager.secretAccessor"
-  member    = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+# Allow Cloud Run to find VMs and use OS Login
+resource "google_project_iam_member" "cloud_run_sa_os_login" {
+  project = var.project_id
+  role    = "roles/compute.osLogin"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
 }
 
-# Create the Cloud Run Service
-resource "google_cloud_run_v2_service" "proxy" {
-  name     = "cloud-run-proxy"
-  location = var.region
-  ingress  = "INGRESS_TRAFFIC_ALL" # Accessible from Gateway (Public)
+resource "google_project_iam_member" "cloud_run_sa_iap_tunneling" {
+  project = var.project_id
+  role    = "roles/iap.tunnelResourceAccessor"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
+resource "google_project_iam_member" "cloud_run_sa_compute_viewer" {
+  project = var.project_id
+  role    = "roles/compute.viewer"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
+resource "google_project_iam_member" "cloud_run_sa_service_account_user" {
+  project = var.project_id
+  role    = "roles/iam.serviceAccountUser"
+  member  = "serviceAccount:${google_service_account.cloud_run_sa.email}"
+}
+
+
+# Create a Storage Bucket to hold the zipped source code
+resource "google_storage_bucket" "source_bucket" {
+  name     = "my-project-source"
+  location = "us-central1"
+  uniform_bucket_level_access = true
+}
+
+# Zip the local source code
+data "archive_file" "source_zip" {
+  type        = "zip"
+  source_dir  = "${path.module}/../../../invest_processes"
+  output_path = "${path.module}/invest_processes.zip"
+}
+
+# Upload the zipped source code to the bucket
+# Include the hash in the name to trigger a new upload when the source code changes
+resource "google_storage_bucket_object" "source_object" {
+  name   = "source-${data.archive_file.source_zip.output_md5}.zip"
+  bucket = google_storage_bucket.source_bucket.name
+  source = data.archive_file.source_zip.output_path
+}
+
+# Run a gcloud command to start a Cloud Build from the uploaded source code
+# There is currently not a working way to create a Cloud Build directly in terraform 
+# https://github.com/hashicorp/terraform-provider-google/issues/23057
+resource "terraform_data" "manual_build_submission" {
+  triggers_replace = [
+    google_storage_bucket_object.source_object.id
+  ]
+
+  provisioner "local-exec" {
+    command = <<EOT
+      gcloud builds submit gs://${google_storage_bucket.source_bucket.name}/${google_storage_bucket_object.source_object.name} \
+        --tag us-central1-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.my_repo.name}/pygeoapi-server:${local.app_dir_sha1} \
+        --project ${var.project_id} \
+        --region us-central1
+    EOT
+  }
+}
+
+# Create a Cloud Run service from the docker image that we built
+resource "google_cloud_run_v2_service" "pygeoapi_service" {
+  provider = google-beta
+  name     = "pygeoapi-service"
+  location = "us-central1"
   deletion_protection = false
 
+  scaling {
+    min_instance_count = 1
+  }
+
   template {
-    service_account = google_service_account.cloud_run_sa.email
-
     containers {
-      image = "nginx:alpine"
+      # Point to the Artifact Registry image that we built
+      image = "${google_artifact_registry_repository.my_repo.location}-docker.pkg.dev/${google_artifact_registry_repository.my_repo.project}/${google_artifact_registry_repository.my_repo.repository_id}/pygeoapi-server:${local.app_dir_sha1}"
 
-      # Mount the config volume
-      volume_mounts {
-        name       = "nginx-conf"
-        mount_path = "/etc/nginx/conf.d"
+      ports {
+        container_port = 5000
       }
-    }
 
-    annotations = {
-      # this causes terraform to redeploy the service whenever the secret changes
-      force-update-key = google_secret_manager_secret_version.nginx_config_data.name
-    }
+      # Define environment variables
+      env {
+        name  = "HOME"
+        value = "/tmp"
+      }
 
-    # Create a volume containing the config defined below
-    volumes {
-      name = "nginx-conf"
-      secret {
-        secret = google_secret_manager_secret.nginx_config.secret_id
-        items {
-          version  = "latest"
-          path = "default.conf"
+      startup_probe {
+        tcp_socket {
+          port = 5000
+        }
+      }
+
+      resources {
+        limits = {
+          "cpu" = "2"
+          "memory" = "8Gi"
         }
       }
     }
+
+    service_account = google_service_account.cloud_run_sa.email
 
     # Enable VPC egress so that this service can reach the internal server
     vpc_access {
@@ -90,42 +178,16 @@ resource "google_cloud_run_v2_service" "proxy" {
       egress = "ALL_TRAFFIC"
     }
   }
-}
 
-# Define the nginx config
-# Though the contents are not really secret, storing the config data
-# as a Secret is a convenient way to make it accessible as a volume
-# in the Cloud Run service.
-resource "google_secret_manager_secret" "nginx_config" {
-  secret_id = "proxy-nginx-config"
-  replication {
-    auto {}
-  }
+  # Ensure the build finishes before Cloud Run tries to pull the image
+  depends_on = [terraform_data.manual_build_submission]
 }
-
-resource "google_secret_manager_secret_version" "nginx_config_data" {
-  secret = google_secret_manager_secret.nginx_config.id
-
-  # This config listens on 8080 and proxies to the internal server
-  # Cloud Run listens on port 8080 by default
-  # No trailing slash on the URL tells it to pass the full path along
-  # TODO: get the interal server IP dynamically in terraform
-  secret_data = <<EOF
-server {
-    listen 8080;
-    location / {
-        proxy_pass http://10.0.0.3:5000;
-    }
-}
-EOF
-}
-
 
 # Allow the Gateway SA to invoke the Cloud Run service
 resource "google_cloud_run_v2_service_iam_binding" "invoker" {
   project  = var.project_id
   location = var.region
-  name     = google_cloud_run_v2_service.proxy.name
+  name     = google_cloud_run_v2_service.pygeoapi_service.name
   role     = "roles/run.invoker"
 
   members = [
@@ -194,7 +256,7 @@ resource "google_api_gateway_api_config" "api_cfg" {
       contents = base64encode(
         templatefile(
           "../../bundled-openapi.yml",
-          { backend_url = google_cloud_run_v2_service.proxy.uri }
+          { backend_url = google_cloud_run_v2_service.pygeoapi_service.uri }
         )
       )
     }

@@ -56,7 +56,6 @@ server:
 
 logging:
     level: DEBUG
-    logfile: pygeoapi.log
 
 metadata:
     identification:
