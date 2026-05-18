@@ -95,7 +95,7 @@ def get_job_result(api, request, job_id):
             request.format, 'JobResultNotFound', job_id
         )
 
-    print('job details:', job)
+    print('job details:', job, job['status'], JobStatus.failed)
     print('job output:', job_output)
 
     if job['status'] == JobStatus.failed:
