@@ -72,6 +72,8 @@ def get_job_result(api, request, job_id):
             HTTPStatus.NOT_FOUND, headers,
             request.format, 'NoSuchJob', job_id
         )
+    print('job:', job)
+    job['status'] = JobStatus(job['status'])
 
 
     if job['status'] == JobStatus.running:
