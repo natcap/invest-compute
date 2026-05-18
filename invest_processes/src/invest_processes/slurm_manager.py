@@ -99,8 +99,10 @@ def get_job_result(api, request, job_id):
     print('job output:', job_output)
 
     if job['status'] == JobStatus.failed:
+        print('bad request')
         http_status = HTTPStatus.BAD_REQUEST
     else:
+        print('ok')
         http_status = HTTPStatus.OK
 
         # exception = {
@@ -137,7 +139,7 @@ def get_job_result(api, request, job_id):
                 api.config, api.config['server']['templates'],
                 'jobs/results/index.html', data, request.locale)
 
-    print('status:', http_status, 'content:', content)
+    print('status:', http_status, HTTPStatus.BAD_REQUEST, 'content:', content)
 
     return headers, http_status, content
 
