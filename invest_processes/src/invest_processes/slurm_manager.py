@@ -137,7 +137,7 @@ def get_job_result(api, request, job_id):
                 api.config, api.config['server']['templates'],
                 'jobs/results/index.html', data, request.locale)
 
-    print('content:', content)
+    print('status:', http_status, 'content:', content)
 
     return headers, http_status, content
 
