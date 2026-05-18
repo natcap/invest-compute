@@ -63,8 +63,6 @@ def get_job_result(api, request, job_id):
     """
     headers = request.get_response_headers(pygeoapi.api.SYSTEM_LOCALE,
                                            **api.api_headers)
-    print('request format', request.format)
-
     try:
         job = api.manager.get_job(job_id)
     except JobNotFoundError:
@@ -72,78 +70,67 @@ def get_job_result(api, request, job_id):
             HTTPStatus.NOT_FOUND, headers,
             request.format, 'NoSuchJob', job_id
         )
-    print('job:', job)
-    job['status'] = JobStatus(job['status'])
+    job_status = JobStatus(job['status'])
 
-
-    if job['status'] == JobStatus.running:
-        msg = 'job still running'
+    if job_status == JobStatus.running:
         return api.get_exception(
-            HTTPStatus.NOT_FOUND, headers,
-            request.format, 'ResultNotReady', msg)
-
-    elif job['status'] == JobStatus.accepted:
+            status=HTTPStatus.NOT_FOUND,
+            headers=headers,
+            format_=request.format,
+            code='ResultNotReady',
+            description='job still running')
+    elif job_status == JobStatus.accepted:
         # NOTE: this case is not mentioned in the specification
-        msg = 'job accepted but not yet running'
         return api.get_exception(
-            HTTPStatus.NOT_FOUND, headers,
-            request.format, 'ResultNotReady', msg)
-
-    try:
-        mimetype, job_output = api.manager.get_job_result(job_id)
-    except JobResultNotFoundError:
+            status=HTTPStatus.NOT_FOUND,
+            headers=headers,
+            format_=request.format,
+            code='ResultNotReady',
+            description='job accepted but not yet running')
+    elif job_status == JobStatus.dismissed:
+        # NOTE: this case is not mentioned in the specification
         return api.get_exception(
-            HTTPStatus.INTERNAL_SERVER_ERROR, headers,
-            request.format, 'JobResultNotFound', job_id
-        )
-
-    print('job details:', job, job['status'], JobStatus.failed)
-    print('job output:', job_output)
-
-    if job['status'] == JobStatus.failed:
-        print('bad request')
-        http_status = HTTPStatus.BAD_REQUEST
-    else:
-        print('ok')
-        http_status = HTTPStatus.OK
-
-        # exception = {
-        #     'code': 'InvalidParameterValue',
-        #     'type': 'InvalidParameterValue',
-        #     'description': 'job failed'
-        # }
-        # if request.format == F_HTML:
-        #     headers['Content-Type'] = FORMAT_TYPES[F_HTML]
-        #     content = render_j2_template(
-        #         api.tpl_config, api.config['server']['templates'],
-        #         'exception.html', exception, SYSTEM_LOCALE)
-        # else:
-        #     content = pygeoapi.util.to_json(exception, api.pretty_print)
-
-        # return headers, HTTPStatus.BAD_REQUEST, content
-
-    print('mimetype:', mimetype)
-    if mimetype not in (None, 'application/json'):
-        headers['Content-Type'] = mimetype
-        content = job_output
-    else:
-        if request.format == 'json':
+            status=HTTPStatus.NOT_FOUND,
+            headers=headers,
+            format_=request.format,
+            code='JobDismissed',
+            description='job was dismissed')
+    elif job_status == JobStatus.failed:
+        _, job_output = api.manager.get_job_result(job_id)
+        exception = {
+            'code': 'JobExitedWithError',
+            'type': 'JobExitedWithError',
+            'description': 'The job exited with an error. Please download the logs from the workspace to identify the problem.',
+            'workspace_url': job_output['workspace_url']
+        }
+        if request.format == F_HTML:
+            headers['Content-Type'] = "text/html"
+            content = render_j2_template(
+                config=api.tpl_config,
+                tpl_config=api.config['server']['templates'],
+                template='exception.html',
+                data=exception,
+                locale_=SYSTEM_LOCALE)
+        else:
+            content = pygeoapi.util.to_json(exception, api.pretty_print)
+        return headers, HTTPStatus.BAD_REQUEST, content
+    else:  # success
+        _, job_output = api.manager.get_job_result(job_id)
+        if request.format == F_HTML:
+            headers['Content-Type'] = "text/html"
+            content = render_j2_template(
+                config=api.config,
+                tpl_config=api.config['server']['templates'],
+                template='jobs/results/index.html',
+                data={
+                    'job': {'id': job_id},
+                    'result': job_output
+                },
+                locale_=request.locale)
+        else:
             content = json.dumps(job_output, sort_keys=True, indent=4,
                                  default=json_serial)
-        else:
-            # HTML
-            headers['Content-Type'] = "text/html"
-            data = {
-                'job': {'id': job_id},
-                'result': job_output
-            }
-            content = render_j2_template(
-                api.config, api.config['server']['templates'],
-                'jobs/results/index.html', data, request.locale)
-
-    print('status:', http_status, HTTPStatus.BAD_REQUEST, 'content:', content)
-
-    return headers, http_status, content
+        return headers, HTTPStatus.OK, content
 
 pygeoapi.api.processes.get_job_result = get_job_result
 
