@@ -324,18 +324,18 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        comment_string = self.get_scontrol_data(job_id, 'comment')
+        # increase returned field width up to 1000 characters
+        # if comment was modified with sacctmgr, it will have replaced " with `
+        # so convert the quotes back before parsing as json
+        comment_string = self.get_sacct_data(
+            job_id, 'Comment%1000').replace('`', '"')
         if not comment_string:
-            # increase returned field width up to 1000 characters
-            # if comment was modified with sacctmgr, it will have replaced " with `
-            # so convert the quotes back before parsing as json
-            comment_string = self.get_sacct_data(
-                job_id, 'Comment%1000').replace('`', '"')
-            LOGGER.debug(comment_string)
+            comment_string = self.get_scontrol_data(job_id, 'comment')
         if not comment_string:
             LOGGER.error('job comment not found by scontrol or sacct')
             return {}
         try:
+            LOGGER.debug(comment_string)
             return json.loads(comment_string)
         except json.decoder.JSONDecodeError:
             return {}
