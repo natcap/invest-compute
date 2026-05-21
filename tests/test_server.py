@@ -23,9 +23,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
     def tearDown(self):
         shutil.rmtree(self.workspace_dir)
 
-    # def testExecuteProcessMetadata(self):
-    #     response = self.client.get('/processes/invest-execute')
-    #     self.assertEqual(response.status_code, 200)
+    def testExecuteProcessMetadata(self):
+        response = self.client.get('/processes/invest-execute')
+        self.assertEqual(response.status_code, 200)
 
     def testExecuteProcessExecutionSync(self):
         """Test execution of the 'execute' process in sync mode."""
@@ -70,196 +70,196 @@ class PyGeoAPIServerTests(unittest.TestCase):
             }
         )
 
-#     def testExecuteProcessExecutionAsync(self):
-#         """Test execution of the 'execute' process in async mode."""
-#         response = self.client.post(
-#             '/processes/invest-execute/execution',
-#             json={'inputs': {'datastack_url': CARBON_DATASTACK_URL}},
-#             headers={'Prefer': 'respond-async'}
-#         )
-#         self.assertEqual(response.status_code, 201)
-#         execution_response = json.loads(response.get_data(as_text=True))
-#         self.assertEqual(set(execution_response.keys()), {'status', 'type', 'jobID'})
-#         self.assertEqual(execution_response['status'], 'accepted')
-#         # according to the OGC standard this should always be 'process'
-#         self.assertEqual(execution_response['type'], 'process')
-#         self.assertIn(
-#             f'/jobs/{execution_response["jobID"]}',
-#             response.headers['Location'])
+    def testExecuteProcessExecutionAsync(self):
+        """Test execution of the 'execute' process in async mode."""
+        response = self.client.post(
+            '/processes/invest-execute/execution',
+            json={'inputs': {'datastack_url': CARBON_DATASTACK_URL}},
+            headers={'Prefer': 'respond-async'}
+        )
+        self.assertEqual(response.status_code, 201)
+        execution_response = json.loads(response.get_data(as_text=True))
+        self.assertEqual(set(execution_response.keys()), {'status', 'type', 'jobID'})
+        self.assertEqual(execution_response['status'], 'accepted')
+        # according to the OGC standard this should always be 'process'
+        self.assertEqual(execution_response['type'], 'process')
+        self.assertIn(
+            f'/jobs/{execution_response["jobID"]}',
+            response.headers['Location'])
 
-#         # poll status until the job finishes
-#         # TODO: test with a longer running job
-#         while True:
-#             job_response = json.loads(self.client.get(
-#                 f'/jobs/{execution_response["jobID"]}').get_data(as_text=True))
-#             self.assertNotIn(job_response['status'], {'failed', 'dismissed'})
-#             if job_response['status'] == 'successful':
-#                 break
-#             time.sleep(5)
+        # poll status until the job finishes
+        # TODO: test with a longer running job
+        while True:
+            job_response = json.loads(self.client.get(
+                f'/jobs/{execution_response["jobID"]}').get_data(as_text=True))
+            self.assertNotIn(job_response['status'], {'failed', 'dismissed'})
+            if job_response['status'] == 'successful':
+                break
+            time.sleep(5)
 
-#         results_response = json.loads(self.client.get(
-#             f'/jobs/{execution_response["jobID"]}/results?f=json').get_data(
-#             as_text=True))
-#         local_dest_path = os.path.join(self.workspace_dir, 'results')
-#         os.mkdir(local_dest_path)
-#         subprocess.run([
-#             'gcloud', 'storage', 'cp', '--recursive',
-#             f'{results_response["workspace_url"]}/*', local_dest_path
-#         ], check=True)
-#         self.assertEqual(
-#             set(os.listdir(local_dest_path)),
-#             {
-#                 'datastack',         # extracted datastack directory
-#                 'stdout.log',        # stdout from the slurm job
-#                 'stderr.log',        # stderr from the slurm job
-#                 'script.slurm',      # the slurm script sent to sbatch
-#                 'carbon_workspace',  # the invest model workspace directory
-#                 'results.json'       # json results file used by pygeoapi
-#             }
-#         )
+        results_response = json.loads(self.client.get(
+            f'/jobs/{execution_response["jobID"]}/results?f=json').get_data(
+            as_text=True))
+        local_dest_path = os.path.join(self.workspace_dir, 'results')
+        os.mkdir(local_dest_path)
+        subprocess.run([
+            'gcloud', 'storage', 'cp', '--recursive',
+            f'{results_response["workspace_url"]}/*', local_dest_path
+        ], check=True)
+        self.assertEqual(
+            set(os.listdir(local_dest_path)),
+            {
+                'datastack',         # extracted datastack directory
+                'stdout.log',        # stdout from the slurm job
+                'stderr.log',        # stderr from the slurm job
+                'script.slurm',      # the slurm script sent to sbatch
+                'carbon_workspace',  # the invest model workspace directory
+                'results.json'       # json results file used by pygeoapi
+            }
+        )
 
-#     def testExecuteProcessExecutionSlowAsync(self):
-#         """Test execution in async mode with a longer-running job."""
-#         response = self.client.post(
-#             '/processes/invest-execute/execution',
-#             json={'inputs': {'datastack_url': SQ_DATASTACK_URL}},
-#             headers={'Prefer': 'respond-async'}
-#         )
-#         self.assertEqual(response.status_code, 201)
-#         execution_response = json.loads(response.get_data(as_text=True))
-#         self.assertEqual(set(execution_response.keys()), {'status', 'type', 'jobID'})
-#         self.assertEqual(execution_response['status'], 'accepted')
-#         # according to the OGC standard this should always be 'process'
-#         self.assertEqual(execution_response['type'], 'process')
-#         self.assertIn(
-#             f'/jobs/{execution_response["jobID"]}',
-#             response.headers['Location'])
+    def testExecuteProcessExecutionSlowAsync(self):
+        """Test execution in async mode with a longer-running job."""
+        response = self.client.post(
+            '/processes/invest-execute/execution',
+            json={'inputs': {'datastack_url': SQ_DATASTACK_URL}},
+            headers={'Prefer': 'respond-async'}
+        )
+        self.assertEqual(response.status_code, 201)
+        execution_response = json.loads(response.get_data(as_text=True))
+        self.assertEqual(set(execution_response.keys()), {'status', 'type', 'jobID'})
+        self.assertEqual(execution_response['status'], 'accepted')
+        # according to the OGC standard this should always be 'process'
+        self.assertEqual(execution_response['type'], 'process')
+        self.assertIn(
+            f'/jobs/{execution_response["jobID"]}',
+            response.headers['Location'])
 
-#         # poll status until the job finishes
-#         # TODO: test with a longer running job
-#         while True:
-#             job_response = json.loads(self.client.get(
-#                 f'/jobs/{execution_response["jobID"]}').get_data(as_text=True))
-#             if job_response['status'] in {'successful', 'failed', 'dismissed'}:
-#                 break
-#             time.sleep(5)
+        # poll status until the job finishes
+        # TODO: test with a longer running job
+        while True:
+            job_response = json.loads(self.client.get(
+                f'/jobs/{execution_response["jobID"]}').get_data(as_text=True))
+            if job_response['status'] in {'successful', 'failed', 'dismissed'}:
+                break
+            time.sleep(5)
 
-#         results_response = json.loads(self.client.get(
-#             f'/jobs/{execution_response["jobID"]}/results?f=json').get_data(
-#             as_text=True))
+        results_response = json.loads(self.client.get(
+            f'/jobs/{execution_response["jobID"]}/results?f=json').get_data(
+            as_text=True))
 
-#         local_dest_path = os.path.join(self.workspace_dir, 'results')
-#         os.mkdir(local_dest_path)
-#         subprocess.run([
-#             'gcloud', 'storage', 'cp', '--recursive',
-#             f'{results_response["workspace_url"]}/*', local_dest_path
-#         ], check=True)
+        local_dest_path = os.path.join(self.workspace_dir, 'results')
+        os.mkdir(local_dest_path)
+        subprocess.run([
+            'gcloud', 'storage', 'cp', '--recursive',
+            f'{results_response["workspace_url"]}/*', local_dest_path
+        ], check=True)
 
-#         self.assertNotIn(job_response['status'], {'failed', 'dismissed'})
-#         self.assertEqual(
-#             set(os.listdir(local_dest_path)),
-#             {
-#                 'datastack',         # extracted datastack directory
-#                 'stdout.log',        # stdout from the slurm job
-#                 'stderr.log',        # stderr from the slurm job
-#                 'script.slurm',      # the slurm script sent to sbatch
-#                 'scenic_quality_workspace',  # the invest model workspace directory
-#                 'results.json'       # json results file used by pygeoapi
-#             }
-#         )
+        self.assertNotIn(job_response['status'], {'failed', 'dismissed'})
+        self.assertEqual(
+            set(os.listdir(local_dest_path)),
+            {
+                'datastack',         # extracted datastack directory
+                'stdout.log',        # stdout from the slurm job
+                'stderr.log',        # stderr from the slurm job
+                'script.slurm',      # the slurm script sent to sbatch
+                'scenic_quality_workspace',  # the invest model workspace directory
+                'results.json'       # json results file used by pygeoapi
+            }
+        )
 
-#     def testExecuteProcessErrorSync(self):
-#         """Test executing a datastack that should cause a model error."""
-#         response = self.client.post(
-#             '/processes/invest-execute/execution',
-#             json={'inputs': {'datastack_url': ERROR_DATASTACK_URL}}
-#         )
-#         data = json.loads(response.get_data(as_text=True))
-#         self.assertEqual(response.status_code, 200)
-#         self.assertEqual(set(data.keys()), {'workspace_url'})
+    def testExecuteProcessErrorSync(self):
+        """Test executing a datastack that should cause a model error."""
+        response = self.client.post(
+            '/processes/invest-execute/execution',
+            json={'inputs': {'datastack_url': ERROR_DATASTACK_URL}}
+        )
+        data = json.loads(response.get_data(as_text=True))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(set(data.keys()), {'workspace_url'})
 
-#         local_dest_path = os.path.join(self.workspace_dir, 'results')
-#         os.mkdir(local_dest_path)
-#         subprocess.run([
-#             'gcloud', 'storage', 'cp', '--recursive',
-#             f'{data["workspace_url"]}/*', local_dest_path
-#         ], check=True)
+        local_dest_path = os.path.join(self.workspace_dir, 'results')
+        os.mkdir(local_dest_path)
+        subprocess.run([
+            'gcloud', 'storage', 'cp', '--recursive',
+            f'{data["workspace_url"]}/*', local_dest_path
+        ], check=True)
 
-#         self.assertEqual(
-#             set(os.listdir(local_dest_path)),
-#             {
-#                 'datastack',         # extracted datastack directory
-#                 'stdout.log',        # stdout from the slurm job
-#                 'stderr.log',        # stderr from the slurm job
-#                 'script.slurm',      # the slurm script sent to sbatch
-#                 'carbon_workspace',  # the invest model workspace directory
-#                 'results.json'       # json results file used by pygeoapi
-#             }
-#         )
+        self.assertEqual(
+            set(os.listdir(local_dest_path)),
+            {
+                'datastack',         # extracted datastack directory
+                'stdout.log',        # stdout from the slurm job
+                'stderr.log',        # stderr from the slurm job
+                'script.slurm',      # the slurm script sent to sbatch
+                'carbon_workspace',  # the invest model workspace directory
+                'results.json'       # json results file used by pygeoapi
+            }
+        )
 
-#         # expect model error to be captured in stderr.log
-#         with open(os.path.join(local_dest_path, 'stderr.log')) as err_log:
-#             self.assertIn(
-#                 'RuntimeError: does_not_exist.tif: No such file or directory',
-#                 err_log.read())
+        # expect model error to be captured in stderr.log
+        with open(os.path.join(local_dest_path, 'stderr.log')) as err_log:
+            self.assertIn(
+                'RuntimeError: does_not_exist.tif: No such file or directory',
+                err_log.read())
 
-#     def testValidateProcessMetadata(self):
-#         response = self.client.get('/processes/invest-validate')
-#         self.assertEqual(response.status_code, 200)
+    def testValidateProcessMetadata(self):
+        response = self.client.get('/processes/invest-validate')
+        self.assertEqual(response.status_code, 200)
 
-#     def testValidateProcessExecutionSync(self):
-#         """Validation of a datastack should return validation messages"""
-#         response = self.client.post('/processes/invest-validate/execution', json={
-#             'inputs': {
-#                 'datastack_url': CARBON_DATASTACK_URL
-#             }
-#         })
-#         self.assertEqual(response.status_code, 200)
-#         data = json.loads(response.get_data(as_text=True))
-#         self.assertEqual(set(data.keys()),
-#                          {'workspace_url', 'validation_results'})
-#         self.assertEqual(
-#             data['validation_results'],
-#             [{
-#                 'input_ids': ['workspace_dir'],
-#                 'error_message': 'Key is missing from the args dict'
-#             }]
-#         )
+    def testValidateProcessExecutionSync(self):
+        """Validation of a datastack should return validation messages"""
+        response = self.client.post('/processes/invest-validate/execution', json={
+            'inputs': {
+                'datastack_url': CARBON_DATASTACK_URL
+            }
+        })
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.get_data(as_text=True))
+        self.assertEqual(set(data.keys()),
+                         {'workspace_url', 'validation_results'})
+        self.assertEqual(
+            data['validation_results'],
+            [{
+                'input_ids': ['workspace_dir'],
+                'error_message': 'Key is missing from the args dict'
+            }]
+        )
 
-#         local_dest_path = os.path.join(self.workspace_dir, 'results')
-#         os.mkdir(local_dest_path)
-#         subprocess.run([
-#             'gcloud', 'storage', 'cp', '--recursive',
-#             f'{data["workspace_url"]}/*', local_dest_path
-#         ], check=True)
-#         self.assertEqual(
-#             set(os.listdir(local_dest_path)),
-#             {
-#                 'datastack',         # extracted datastack directory
-#                 'stdout.log',        # stdout from the slurm job
-#                 'stderr.log',        # stderr from the slurm job
-#                 'script.slurm',      # the slurm script sent to sbatch
-#                 'results.json'       # json results file used by pygeoapi
-#             }
-#         )
+        local_dest_path = os.path.join(self.workspace_dir, 'results')
+        os.mkdir(local_dest_path)
+        subprocess.run([
+            'gcloud', 'storage', 'cp', '--recursive',
+            f'{data["workspace_url"]}/*', local_dest_path
+        ], check=True)
+        self.assertEqual(
+            set(os.listdir(local_dest_path)),
+            {
+                'datastack',         # extracted datastack directory
+                'stdout.log',        # stdout from the slurm job
+                'stderr.log',        # stderr from the slurm job
+                'script.slurm',      # the slurm script sent to sbatch
+                'results.json'       # json results file used by pygeoapi
+            }
+        )
 
 
-# class UtilsTests(unittest.TestCase):
+class UtilsTests(unittest.TestCase):
 
-#     def setUp(self):
-#         self.workspace_dir = tempfile.mkdtemp()
+    def setUp(self):
+        self.workspace_dir = tempfile.mkdtemp()
 
-#     def tearDown(self):
-#         shutil.rmtree(self.workspace_dir)
+    def tearDown(self):
+        shutil.rmtree(self.workspace_dir)
 
-#     def testDownloadAndExtractDatastack(self):
-#         """Test utility function for downloading and extracting a datastack."""
-#         json_path, model_id = download_and_extract_datastack(
-#             CARBON_DATASTACK_URL, self.workspace_dir)
-#         self.assertEqual(
-#             set(os.listdir(self.workspace_dir)),
-#             {'data', 'log.txt', 'parameters.invest.json'}
-#         )
-#         self.assertEqual(json_path, os.path.join(
-#             self.workspace_dir, 'parameters.invest.json'))
-#         self.assertEqual(model_id, 'carbon')
+    def testDownloadAndExtractDatastack(self):
+        """Test utility function for downloading and extracting a datastack."""
+        json_path, model_id = download_and_extract_datastack(
+            CARBON_DATASTACK_URL, self.workspace_dir)
+        self.assertEqual(
+            set(os.listdir(self.workspace_dir)),
+            {'data', 'log.txt', 'parameters.invest.json'}
+        )
+        self.assertEqual(json_path, os.path.join(
+            self.workspace_dir, 'parameters.invest.json'))
+        self.assertEqual(model_id, 'carbon')
