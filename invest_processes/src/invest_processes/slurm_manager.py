@@ -565,12 +565,8 @@ class SlurmManager(BaseManager):
                 job_metadata['completed'] = True
                 subprocess.run([
                     'sacctmgr', 'modify', '--immediate', 'job', f'jobid={job_id}',
-                    'set', f"comment='{json.dumps(job_metadata)}'"])
-
-                # write token to workspace directory
-                # this marks that post processing is complete
-                with open(Path(workspace_dir) / 'job_complete_token', 'w') as file:
-                    file.write('job complete')
+                    'set', f"comment='{json.dumps(job_metadata)}'"], check=True)
+                print('metadata:', self.get_job_metadata(job_id))
 
     def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
                               subscriber=None, requested_response=RequestedResponse.raw.value):
