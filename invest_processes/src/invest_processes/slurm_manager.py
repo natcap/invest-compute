@@ -541,6 +541,7 @@ class SlurmManager(BaseManager):
 
         finally:
             try:
+                print('uploading')
                 bucket_gs_url = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
                 results_json_path = Path(workspace_dir) / 'results.json'
                 with open(results_json_path, 'w') as results_json:
@@ -558,6 +559,7 @@ class SlurmManager(BaseManager):
                 LOGGER.exception(err)
 
             finally:
+                print('set completed to true')
                 LOGGER.debug('Creating job complete token')
                 job_metadata = self.get_job_metadata(job_id)
                 job_metadata['completed'] = True
