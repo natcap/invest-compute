@@ -110,7 +110,7 @@ def get_job_result(api, request, job_id):
                 tpl_config=api.config['server']['templates'],
                 template='exception.html',
                 data=exception,
-                locale_=SYSTEM_LOCALE)
+                locale_=pygeoapi.api.SYSTEM_LOCALE)
         else:
             content = pygeoapi.util.to_json(exception, api.pretty_print)
         return headers, HTTPStatus.BAD_REQUEST, content
@@ -327,11 +327,18 @@ class SlurmManager(BaseManager):
         comment_string = self.get_scontrol_data(job_id, 'comment')
         if not comment_string:
             # increase returned field width up to 1000 characters
-            comment_string = self.get_sacct_data(job_id, 'Comment%1000')
+            # if comment was modified with sacctmgr, it will have replaced " with `
+            # so convert the quotes back before parsing as json
+            comment_string = self.get_sacct_data(
+                job_id, 'Comment%1000').replace('`', '"')
+            LOGGER.debug(comment_string)
         if not comment_string:
             LOGGER.error('job comment not found by scontrol or sacct')
             return {}
-        return json.loads(comment_string)
+        try:
+            return json.loads(comment_string)
+        except json.decoder.JSONDecodeError:
+            return {}
 
     def get_job_submit_time(self, job_id):
         return f'{self.get_sacct_data(job_id, 'Submit')}Z'
@@ -348,7 +355,6 @@ class SlurmManager(BaseManager):
             return ''
         return f'{end_time}Z'
 
-
     def get_job(self, job_id: str) -> dict:
         """
         Get a job status. Called by the /jobs/<job_id> endpoint.
@@ -360,7 +366,7 @@ class SlurmManager(BaseManager):
         :returns: `dict` of job result
         """
         job_metadata = self.get_job_metadata(job_id)
-        job_status = JobStatus(self.get_job_status(job_id))
+        job_status = self.get_job_status(job_id)
 
         # After the job finishes, we need to wait for the workspace to finish
         # uploading to the bucket. After uploading has finished, we create a
@@ -368,18 +374,17 @@ class SlurmManager(BaseManager):
         # Check for that token, and if it's not present, the job status
         # is still 'running' for the purpose of API clients.
         if job_status in {JobStatus.failed, JobStatus.dismissed, JobStatus.successful}:
-            workspace_dir = self.get_job_metadata(job_id)['workspace_dir']
-            if not (Path(workspace_dir) / 'job_complete_token').exists():
-                LOGGER.debug('Job finished but  not yet complete.')
-                job_status = JobStatus.running
-            else:
+            if self.get_job_metadata(job_id).get('completed', True):
                 LOGGER.debug(f'Job {job_id} and post processing completed.')
+            else:
+                LOGGER.debug('Job finished but post processing is not yet complete.')
+                job_status = JobStatus.running
 
         return {
             "type": "process",
             "identifier": job_id,
             "process_id": job_metadata['process_id'],
-            "location": job_metadata['results_url'],
+            "location": job_metadata.get('results_url', '?'),
             "created": self.get_job_submit_time(job_id),
             "started": self.get_job_start_time(job_id),
             "finished": self.get_job_end_time(job_id),
@@ -554,6 +559,12 @@ class SlurmManager(BaseManager):
 
             finally:
                 LOGGER.debug('Creating job complete token')
+                job_metadata = self.get_job_metadata(job_id)
+                job_metadata['completed'] = True
+                subprocess.run([
+                    'sacctmgr', 'modify', '--immediate', 'job', f'jobid={job_id}',
+                    'set', f"comment='{json.dumps(job_metadata)}'"])
+
                 # write token to workspace directory
                 # this marks that post processing is complete
                 with open(Path(workspace_dir) / 'job_complete_token', 'w') as file:
@@ -696,7 +707,8 @@ class SlurmManager(BaseManager):
             'workspace_dir': workspace_dir,
             'results_path': str(Path(workspace_dir) / 'results.json'),
             'results_url': f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}',
-            'process_id': processor.metadata['id']
+            'process_id': processor.metadata['id'],
+            'completed': False
         })
 
         # Submit the job
