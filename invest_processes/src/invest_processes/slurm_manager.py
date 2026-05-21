@@ -314,9 +314,9 @@ class SlurmManager(BaseManager):
         Get a job's metadata as stored in the slurm job comment.
 
         Unlike other job data, the 'comment' field doesn't seem to be added to
-        the database until the job finishes. So we first try `scontrol`, which
-        can only return data for jobs that are running, and if that fails we try
-        `sacct`, which has the data for jobs that have finished.
+        the database until the job finishes. So we first try `sacct`, which has
+        the data for jobs that have finished, and if that fails we try `scontrol`,
+        which can only return data for jobs that are running.
 
         :param job_id: job identifier
 
@@ -324,6 +324,10 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
+        # first try sacct, because if the job is finished and we have modified the
+        # metadata with sacctmgr, the modification will only show up in sacct
+        # if sacct doesn't have it, try scontrol
+        #
         # increase returned field width up to 1000 characters
         # if comment was modified with sacctmgr, it will have replaced " with `
         # so convert the quotes back before parsing as json
@@ -369,10 +373,10 @@ class SlurmManager(BaseManager):
         job_status = self.get_job_status(job_id)
 
         # After the job finishes, we need to wait for the workspace to finish
-        # uploading to the bucket. After uploading has finished, we create a
-        # token file in the workspace to indicate that it's complete.
-        # Check for that token, and if it's not present, the job status
-        # is still 'running' for the purpose of API clients.
+        # uploading to the bucket. After uploading has finished, we update the
+        # job metadata to indicate that it's complete.
+        # If 'completed' has not been set to True, the job status is still
+        # 'running' for the purpose of API clients.
         if job_status in {JobStatus.failed, JobStatus.dismissed, JobStatus.successful}:
             if self.get_job_metadata(job_id).get('completed', True):
                 LOGGER.debug(f'Job {job_id} and post processing completed.')
@@ -541,7 +545,6 @@ class SlurmManager(BaseManager):
 
         finally:
             try:
-                print('uploading')
                 bucket_gs_url = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
                 results_json_path = Path(workspace_dir) / 'results.json'
                 with open(results_json_path, 'w') as results_json:
@@ -559,14 +562,12 @@ class SlurmManager(BaseManager):
                 LOGGER.exception(err)
 
             finally:
-                print('set completed to true')
-                LOGGER.debug('Creating job complete token')
+                LOGGER.debug(f'Updating metadata for job {job_id} to indicate job is complete')
                 job_metadata = self.get_job_metadata(job_id)
                 job_metadata['completed'] = True
                 subprocess.run([
                     'sacctmgr', 'modify', '--immediate', 'job', f'jobid={job_id}',
                     'set', f"comment='{json.dumps(job_metadata)}'"], check=True)
-                print('metadata:', self.get_job_metadata(job_id))
 
     def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
                               subscriber=None, requested_response=RequestedResponse.raw.value):
