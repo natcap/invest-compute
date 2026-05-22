@@ -113,10 +113,10 @@ class ValidateProcessor(BaseProcessor):
         with open(output_filepath) as file:
             json_output = json.loads(file.read())
         # convert the list of lists to a list of maps
-        return [{
+        return {'validation_results': [{
             'input_ids': input_ids,
             'error_message': error_message
-        } for (input_ids, error_message) in json_output]
+        } for (input_ids, error_message) in json_output['validation_results']]}
 
     def __repr__(self):
         return f'<InVESTValidateProcessor> {self.name}'
