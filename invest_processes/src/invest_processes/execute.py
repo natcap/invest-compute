@@ -76,7 +76,6 @@ class ExecuteProcessor(BaseProcessor):
         json_path = f'{workspace_dir}/datastack/parameters.invest.json'
         return textwrap.dedent(f"""\
             #!/bin/sh
-            #SBATCH --time=10
 
             curl -o datastack.tgz "{datastack_url}"
             mkdir {workspace_dir}/datastack
@@ -89,7 +88,7 @@ class ExecuteProcessor(BaseProcessor):
                 $MODEL_ID
             """)
 
-    def process_output(self, workspace_dir):
+    def get_outputs(self, workspace_dir):
         """Return outputs given a workspace from completed slurm job.
 
         Args:
@@ -98,7 +97,7 @@ class ExecuteProcessor(BaseProcessor):
         Returns:
             empty dict
         """
-        pass
+        return {}
 
     def __repr__(self):
         return f'<InVESTExecuteProcessor> {self.name}'
