@@ -12,7 +12,6 @@ from typing import Any, Optional, Tuple
 from google.cloud import storage
 import pygeoapi.api.processes
 from pygeoapi.process.base import JobNotFoundError
-from pygeoapi.process.base import JobResultNotFoundError
 from pygeoapi.process.manager.base import BaseManager
 from pygeoapi.util import (
     JobStatus,
@@ -212,7 +211,7 @@ class SlurmManager(BaseManager):
                 "type": "process",
                 "identifier": job_id,
                 "process_id": job_metadata.get('process_id', '?'),
-                "location": job_metadata.get('results_url', '?'),
+                "location": job_metadata.get('workspace_url', '?'),
                 "created": submit_time,
                 "started": start_time,
                 "finished": end_time,
@@ -388,7 +387,7 @@ class SlurmManager(BaseManager):
             "type": "process",
             "identifier": job_id,
             "process_id": job_metadata['process_id'],
-            "location": job_metadata.get('results_url', '?'),
+            "location": job_metadata.get('workspace_url', '?'),
             "created": self.get_job_submit_time(job_id),
             "started": self.get_job_start_time(job_id),
             "finished": self.get_job_end_time(job_id),
@@ -497,17 +496,17 @@ class SlurmManager(BaseManager):
 
         return job_id, mime_type, outputs, status, response_headers
 
-    def monitor_job_status(self, job_id, workspace_dir, process_output_func):
+    def monitor_job_status(self, job_id, workspace_dir, get_outputs_func):
         """Poll the slurm job until it completes, then perform final processing.
 
         Args:
             job_id: id of the slurm job
             workspace_dir: slurm job's workspace directory
-            process_output_func: the Process's output processing method that will
+            get_outputs_func: the Process's output processing method that will
                 be run after the job completes
 
         Returns:
-            None
+            dict of job outputs
         """
         try:
             # wait for the slurm job to complete
@@ -527,31 +526,17 @@ class SlurmManager(BaseManager):
                 LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
 
         except Exception as err:
-            # TODO assess correct exception type and description to help users
-            # NOTE, the /results endpoint should return the error HTTP status
-            # for jobs that failed, the specification says that failing jobs
-            # must still be able to be retrieved with their error message
-            # intact, and the correct HTTP error status at the /results
-            # endpoint, even if the /result endpoint correctly returns the
-            # failure information (i.e. what one might assume is a 200
-            # response).
-            outputs = {
-                'type': 'process',
-                'code': 'InvalidParameterValue',
-                'description': f'Error executing process: {err}',
-                'workspace': workspace_dir
-            }
             LOGGER.exception(err)
 
         finally:
             try:
-                bucket_gs_url = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
-                results_json_path = Path(workspace_dir) / 'results.json'
-                with open(results_json_path, 'w') as results_json:
-                    results_json.write(json.dumps({'workspace_url': bucket_gs_url}))
-
-                # process outputs, should update results.json in the workspace
-                process_output_func(workspace_dir)
+                # get a dict of outputs (if any) from the workspace
+                # for the validate process, this includes the validation messages
+                # for the execute process, this is an empty dictionary
+                # include the workspace url in the outputs for all processes
+                # this is only used in sync mode to return results immediately
+                outputs = get_outputs_func(workspace_dir)
+                outputs['workspace_url'] = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
 
                 # Upload the workspace even if something went wrong, so that the
                 # user can access the slurm related files and any partial results.
@@ -568,6 +553,7 @@ class SlurmManager(BaseManager):
                 subprocess.run([
                     'sacctmgr', 'modify', '--immediate', 'job', f'jobid={job_id}',
                     'set', f"comment='{json.dumps(job_metadata)}'"], check=True)
+                return outputs
 
     def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
                               subscriber=None, requested_response=RequestedResponse.raw.value):
@@ -601,21 +587,16 @@ class SlurmManager(BaseManager):
                 'return to the user.')
             raise ex
 
-        # Monitor job in a separate thread until it completes
-        monitor_thread = threading.Thread(
-            target=self.monitor_job_status,
-            args=(job_id, workspace_dir, processor.process_output))
-        monitor_thread.start()
-        monitor_thread.join()
-        final_status = self.get_job_status(job_id)
-
-        with open(Path(workspace_dir) / 'results.json') as results_file:
-            outputs = json.load(results_file)
+        with ThreadPoolExecutor() as executor:
+            future = executor.submit(
+                self.monitor_job_status, job_id, workspace_dir, processor.get_outputs)
+            outputs = future.result()  # Blocks until thread is done
 
         if requested_response == RequestedResponse.document.value:
             outputs = {
                 'outputs': [outputs]
             }
+        final_status = self.get_job_status(job_id)
         return job_id, 'application/json', outputs, final_status
 
     def _execute_handler_async(self, processor, data_dict, requested_outputs=None,
@@ -649,7 +630,7 @@ class SlurmManager(BaseManager):
         # Monitor job in a separate thread, don't wait for it to complete
         monitor_thread = threading.Thread(
             target=self.monitor_job_status,
-            args=(job_id, workspace_dir, processor.process_output))
+            args=(job_id, workspace_dir, processor.get_outputs))
         monitor_thread.start()
 
         outputs = {
@@ -704,8 +685,7 @@ class SlurmManager(BaseManager):
 
         job_metadata = json.dumps({
             'workspace_dir': workspace_dir,
-            'results_path': str(Path(workspace_dir) / 'results.json'),
-            'results_url': f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}',
+            'workspace_url': f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}',
             'process_id': processor.metadata['id'],
             'completed': False
         })
