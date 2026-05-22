@@ -65,8 +65,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job
                 'script.slurm',      # the slurm script sent to sbatch
-                'carbon_workspace',  # the invest model workspace directory
-                'results.json'       # json results file used by pygeoapi
+                'carbon_workspace'  # the invest model workspace directory
             }
         )
 
@@ -113,8 +112,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job
                 'script.slurm',      # the slurm script sent to sbatch
-                'carbon_workspace',  # the invest model workspace directory
-                'results.json'       # json results file used by pygeoapi
+                'carbon_workspace'  # the invest model workspace directory
             }
         )
 
@@ -163,8 +161,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job
                 'script.slurm',      # the slurm script sent to sbatch
-                'scenic_quality_workspace',  # the invest model workspace directory
-                'results.json'       # json results file used by pygeoapi
+                'scenic_quality_workspace'  # the invest model workspace directory
             }
         )
 
@@ -192,8 +189,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job
                 'script.slurm',      # the slurm script sent to sbatch
-                'carbon_workspace',  # the invest model workspace directory
-                'results.json'       # json results file used by pygeoapi
+                'carbon_workspace'  # the invest model workspace directory
             }
         )
 
@@ -238,8 +234,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'datastack',         # extracted datastack directory
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job
-                'script.slurm',      # the slurm script sent to sbatch
-                'results.json'       # json results file used by pygeoapi
+                'script.slurm'      # the slurm script sent to sbatch
             }
         )
 
