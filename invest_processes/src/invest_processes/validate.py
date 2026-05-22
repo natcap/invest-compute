@@ -112,7 +112,11 @@ class ValidateProcessor(BaseProcessor):
         output_filepath = Path(workspace_dir) / 'validation_results.json'
         with open(output_filepath) as file:
             json_output = json.loads(file.read())
-        return json_output
+        # convert the list of lists to a list of maps
+        return [{
+            'input_ids': input_ids,
+            'error_message': error_message
+        } for (input_ids, error_message) in json_output]
 
     def __repr__(self):
         return f'<InVESTValidateProcessor> {self.name}'
