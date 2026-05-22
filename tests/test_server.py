@@ -234,7 +234,8 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'datastack',         # extracted datastack directory
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job
-                'script.slurm'      # the slurm script sent to sbatch
+                'script.slurm',      # the slurm script sent to sbatch
+                'validation_results.json'  # json output from the validate command
             }
         )
 
