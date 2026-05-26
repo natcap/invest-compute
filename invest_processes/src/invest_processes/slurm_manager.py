@@ -31,24 +31,31 @@ BUCKET = STORAGE_CLIENT.bucket(BUCKET_NAME)
 WORKSPACE_ROOT = 'workspaces'
 os.makedirs(WORKSPACE_ROOT, exist_ok=True)
 
-# Map slurm job statuses to OGC Process job statuses
-# According to the Processes standard, job statuses may be
-# 'accepted', 'running', 'successful', 'failed', or 'dismissed'.
-# Slurm statuses are as defined here: https://slurm.schedmd.com/job_state_codes.html
-JOB_STATUS_MAP = {
-    'BOOT_FAIL': JobStatus.failed,      # terminated due to node boot failure
-    'CANCELLED': JobStatus.dismissed,   # cancelled by user or administrator
-    'COMPLETED': JobStatus.successful,  # completed execution successfully; finished with an exit code of zero on all nodes
-    'DEADLINE': JobStatus.failed,       # terminated due to reaching the latest start time that allows the job to reach its deadline given its TimeLimit
-    'FAILED': JobStatus.failed,         # completed execution unsuccessfully; non-zero exit code or other failure condition
-    'NODE_FAIL': JobStatus.failed,      # terminated due to node failure
-    'OUT_OF_MEMORY': JobStatus.failed,  # experienced out of memory error
-    'PENDING': JobStatus.accepted,      # queued and waiting for initiation; will typically have a reason code specifying why it has not yet started
-    'PREEMPTED': JobStatus.dismissed,   # terminated due to preemption; may transition to another state based on the configured PreemptMode and job characteristics
-    'RUNNING': JobStatus.running,       # allocated resources and executing
-    'SUSPENDED': JobStatus.dismissed,   # allocated resources but execution suspended, such as from preemption or a direct request from an authorized user
-    'TIMEOUT': JobStatus.failed         # terminated due to reaching the time limit, such as those configured in slurm.conf or specified for the individual job
-}
+
+def convert_job_status(status):
+
+    if status.startswith('CANCELLED'):
+        status = 'CANCELLED'
+
+    # Map slurm job statuses to OGC Process job statuses
+    # According to the Processes standard, job statuses may be
+    # 'accepted', 'running', 'successful', 'failed', or 'dismissed'.
+    # Slurm statuses are as defined here: https://slurm.schedmd.com/job_state_codes.html
+    JOB_STATUS_MAP = {
+        'BOOT_FAIL': JobStatus.failed,      # terminated due to node boot failure
+        'CANCELLED': JobStatus.dismissed,   # cancelled by user or administrator
+        'COMPLETED': JobStatus.successful,  # completed execution successfully; finished with an exit code of zero on all nodes
+        'DEADLINE': JobStatus.failed,       # terminated due to reaching the latest start time that allows the job to reach its deadline given its TimeLimit
+        'FAILED': JobStatus.failed,         # completed execution unsuccessfully; non-zero exit code or other failure condition
+        'NODE_FAIL': JobStatus.failed,      # terminated due to node failure
+        'OUT_OF_MEMORY': JobStatus.failed,  # experienced out of memory error
+        'PENDING': JobStatus.accepted,      # queued and waiting for initiation; will typically have a reason code specifying why it has not yet started
+        'PREEMPTED': JobStatus.dismissed,   # terminated due to preemption; may transition to another state based on the configured PreemptMode and job characteristics
+        'RUNNING': JobStatus.running,       # allocated resources and executing
+        'SUSPENDED': JobStatus.dismissed,   # allocated resources but execution suspended, such as from preemption or a direct request from an authorized user
+        'TIMEOUT': JobStatus.failed         # terminated due to reaching the time limit, such as those configured in slurm.conf or specified for the individual job
+    }
+    return JOB_STATUS_MAP[status]
 
 # monkeypatch pygeoapi.api.processes.get_job_result
 # to enable returning custom error details
@@ -217,7 +224,7 @@ class SlurmManager(BaseManager):
                 "started": start_time,
                 "finished": end_time,
                 "updated": submit_time,
-                "status": JOB_STATUS_MAP[job_status].value,
+                "status": convert_job_status(job_status).value,
                 "mimetype": "application/json",
                 "message": "",
                 "progress": -1
@@ -267,7 +274,7 @@ class SlurmManager(BaseManager):
         LOGGER.debug(f'Status of slurm job {job_id}: {status}')
         if not status:
             return None
-        return JOB_STATUS_MAP[status]
+        return convert_job_status(status)
 
     def get_scontrol_data(self, job_id, field_name):
         """Get a slurm job data field value using the scontrol command.
