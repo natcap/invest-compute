@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+from http import HTTPStatus
 import json
 import logging
 import os
@@ -9,12 +11,16 @@ import time
 from typing import Any, Optional, Tuple
 
 from google.cloud import storage
+import pygeoapi.api.processes
+from pygeoapi.process.base import JobNotFoundError
 from pygeoapi.process.manager.base import BaseManager
 from pygeoapi.util import (
     JobStatus,
     ProcessExecutionMode,
     RequestedProcessExecutionMode,
-    RequestedResponse
+    RequestedResponse,
+    render_j2_template,
+    json_serial
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -25,25 +31,115 @@ BUCKET = STORAGE_CLIENT.bucket(BUCKET_NAME)
 WORKSPACE_ROOT = 'workspaces'
 os.makedirs(WORKSPACE_ROOT, exist_ok=True)
 
-# Map slurm job statuses to OGC Process job statuses
-# According to the Processes standard, job statuses may be
-# 'accepted', 'running', 'successful', 'failed', or 'dismissed'.
-# Slurm statuses are as defined here: https://slurm.schedmd.com/job_state_codes.html
-JOB_STATUS_MAP = {
-    'BOOT_FAIL': JobStatus.failed,      # terminated due to node boot failure
-    'CANCELLED': JobStatus.dismissed,   # cancelled by user or administrator
-    'COMPLETED': JobStatus.successful,  # completed execution successfully; finished with an exit code of zero on all nodes
-    'DEADLINE': JobStatus.failed,       # terminated due to reaching the latest start time that allows the job to reach its deadline given its TimeLimit
-    'FAILED': JobStatus.failed,         # completed execution unsuccessfully; non-zero exit code or other failure condition
-    'NODE_FAIL': JobStatus.failed,      # terminated due to node failure
-    'OUT_OF_MEMORY': JobStatus.failed,  # experienced out of memory error
-    'PENDING': JobStatus.accepted,      # queued and waiting for initiation; will typically have a reason code specifying why it has not yet started
-    'PREEMPTED': JobStatus.dismissed,   # terminated due to preemption; may transition to another state based on the configured PreemptMode and job characteristics
-    'RUNNING': JobStatus.running,       # allocated resources and executing
-    'SUSPENDED': JobStatus.dismissed,   # allocated resources but execution suspended, such as from preemption or a direct request from an authorized user
-    'TIMEOUT': JobStatus.failed         # terminated due to reaching the time limit, such as those configured in slurm.conf or specified for the individual job
-}
 
+def convert_job_status(status):
+
+    if status.startswith('CANCELLED'):
+        status = 'CANCELLED'
+
+    # Map slurm job statuses to OGC Process job statuses
+    # According to the Processes standard, job statuses may be
+    # 'accepted', 'running', 'successful', 'failed', or 'dismissed'.
+    # Slurm statuses are as defined here: https://slurm.schedmd.com/job_state_codes.html
+    JOB_STATUS_MAP = {
+        'BOOT_FAIL': JobStatus.failed,      # terminated due to node boot failure
+        'CANCELLED': JobStatus.dismissed,   # cancelled by user or administrator
+        'COMPLETED': JobStatus.successful,  # completed execution successfully; finished with an exit code of zero on all nodes
+        'DEADLINE': JobStatus.failed,       # terminated due to reaching the latest start time that allows the job to reach its deadline given its TimeLimit
+        'FAILED': JobStatus.failed,         # completed execution unsuccessfully; non-zero exit code or other failure condition
+        'NODE_FAIL': JobStatus.failed,      # terminated due to node failure
+        'OUT_OF_MEMORY': JobStatus.failed,  # experienced out of memory error
+        'PENDING': JobStatus.accepted,      # queued and waiting for initiation; will typically have a reason code specifying why it has not yet started
+        'PREEMPTED': JobStatus.dismissed,   # terminated due to preemption; may transition to another state based on the configured PreemptMode and job characteristics
+        'RUNNING': JobStatus.running,       # allocated resources and executing
+        'SUSPENDED': JobStatus.dismissed,   # allocated resources but execution suspended, such as from preemption or a direct request from an authorized user
+        'TIMEOUT': JobStatus.failed         # terminated due to reaching the time limit, such as those configured in slurm.conf or specified for the individual job
+    }
+    return JOB_STATUS_MAP[status]
+
+# monkeypatch pygeoapi.api.processes.get_job_result
+# to enable returning custom error details
+def get_job_result(api, request, job_id):
+    """
+    Get result of job (instance of a process)
+
+    :param request: A request object
+    :param job_id: ID of job
+
+    :returns: tuple of headers, status code, content
+    """
+    headers = request.get_response_headers(pygeoapi.api.SYSTEM_LOCALE,
+                                           **api.api_headers)
+    try:
+        job = api.manager.get_job(job_id)
+    except JobNotFoundError:
+        return api.get_exception(
+            HTTPStatus.NOT_FOUND, headers,
+            request.format, 'NoSuchJob', job_id
+        )
+    job_status = JobStatus(job['status'])
+
+    if job_status == JobStatus.running:
+        return api.get_exception(
+            status=HTTPStatus.NOT_FOUND,
+            headers=headers,
+            format_=request.format,
+            code='ResultNotReady',
+            description='job still running')
+    elif job_status == JobStatus.accepted:
+        # NOTE: this case is not mentioned in the specification
+        return api.get_exception(
+            status=HTTPStatus.NOT_FOUND,
+            headers=headers,
+            format_=request.format,
+            code='ResultNotReady',
+            description='job accepted but not yet running')
+    elif job_status == JobStatus.dismissed:
+        # NOTE: this case is not mentioned in the specification
+        return api.get_exception(
+            status=HTTPStatus.NOT_FOUND,
+            headers=headers,
+            format_=request.format,
+            code='JobDismissed',
+            description='job was dismissed')
+    elif job_status == JobStatus.failed:
+        _, job_output = api.manager.get_job_result(job_id)
+        exception = {
+            'code': 'JobExitedWithError',
+            'type': 'JobExitedWithError',
+            'description': 'The job exited with an error. Please download the logs from the workspace to identify the problem.',
+            'workspace_url': job_output['workspace_url']
+        }
+        if request.format == 'html':
+            headers['Content-Type'] = "text/html"
+            content = render_j2_template(
+                config=api.tpl_config,
+                tpl_config=api.config['server']['templates'],
+                template='exception.html',
+                data=exception,
+                locale_=pygeoapi.api.SYSTEM_LOCALE)
+        else:
+            content = pygeoapi.util.to_json(exception, api.pretty_print)
+        return headers, HTTPStatus.BAD_REQUEST, content
+    else:  # success
+        _, job_output = api.manager.get_job_result(job_id)
+        if request.format == 'html':
+            headers['Content-Type'] = "text/html"
+            content = render_j2_template(
+                config=api.config,
+                tpl_config=api.config['server']['templates'],
+                template='jobs/results/index.html',
+                data={
+                    'job': {'id': job_id},
+                    'result': job_output
+                },
+                locale_=request.locale)
+        else:
+            content = json.dumps(job_output, sort_keys=True, indent=4,
+                                 default=json_serial)
+        return headers, HTTPStatus.OK, content
+
+pygeoapi.api.processes.get_job_result = get_job_result
 
 def upload_directory_to_bucket(dir_path):
     """Upload everything in a given directory to the GCP bucket.
@@ -123,12 +219,12 @@ class SlurmManager(BaseManager):
                 "type": "process",
                 "identifier": job_id,
                 "process_id": job_metadata.get('process_id', '?'),
-                "location": job_metadata.get('results_path', '?'),
+                "location": job_metadata.get('workspace_url', '?'),
                 "created": submit_time,
                 "started": start_time,
                 "finished": end_time,
                 "updated": submit_time,
-                "status": JOB_STATUS_MAP[job_status].value,
+                "status": convert_job_status(job_status).value,
                 "mimetype": "application/json",
                 "message": "",
                 "progress": -1
@@ -178,14 +274,7 @@ class SlurmManager(BaseManager):
         LOGGER.debug(f'Status of slurm job {job_id}: {status}')
         if not status:
             return None
-
-        # return as if successful in case of failure so that error details
-        # can be returned. The user will need to check the logs to confirm
-        # whether the model actually succeeded or not.
-        # https://github.com/geopython/pygeoapi/issues/2203
-        if JOB_STATUS_MAP[status] == JobStatus.failed:
-            return JobStatus.successful
-        return JOB_STATUS_MAP[status]
+        return convert_job_status(status)
 
     def get_scontrol_data(self, job_id, field_name):
         """Get a slurm job data field value using the scontrol command.
@@ -232,9 +321,9 @@ class SlurmManager(BaseManager):
         Get a job's metadata as stored in the slurm job comment.
 
         Unlike other job data, the 'comment' field doesn't seem to be added to
-        the database until the job finishes. So we first try `scontrol`, which
-        can only return data for jobs that are running, and if that fails we try
-        `sacct`, which has the data for jobs that have finished.
+        the database until the job finishes. So we first try `sacct`, which has
+        the data for jobs that have finished, and if that fails we try `scontrol`,
+        which can only return data for jobs that are running.
 
         :param job_id: job identifier
 
@@ -242,14 +331,25 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        comment_string = self.get_scontrol_data(job_id, 'comment')
+        # first try sacct, because if the job is finished and we have modified the
+        # metadata with sacctmgr, the modification will only show up in sacct
+        # if sacct doesn't have it, try scontrol
+        #
+        # increase returned field width up to 1000 characters
+        # if comment was modified with sacctmgr, it will have replaced " with `
+        # so convert the quotes back before parsing as json
+        comment_string = self.get_sacct_data(
+            job_id, 'Comment%1000').replace('`', '"')
         if not comment_string:
-            # increase returned field width up to 1000 characters
-            comment_string = self.get_sacct_data(job_id, 'Comment%1000')
+            comment_string = self.get_scontrol_data(job_id, 'comment')
         if not comment_string:
             LOGGER.error('job comment not found by scontrol or sacct')
             return {}
-        return json.loads(comment_string)
+        try:
+            LOGGER.debug(comment_string)
+            return json.loads(comment_string)
+        except json.decoder.JSONDecodeError:
+            return {}
 
     def get_job_submit_time(self, job_id):
         return f'{self.get_sacct_data(job_id, 'Submit')}Z'
@@ -266,7 +366,6 @@ class SlurmManager(BaseManager):
             return ''
         return f'{end_time}Z'
 
-
     def get_job(self, job_id: str) -> dict:
         """
         Get a job status. Called by the /jobs/<job_id> endpoint.
@@ -281,23 +380,22 @@ class SlurmManager(BaseManager):
         job_status = self.get_job_status(job_id)
 
         # After the job finishes, we need to wait for the workspace to finish
-        # uploading to the bucket. After uploading has finished, we create a
-        # token file in the workspace to indicate that it's complete.
-        # Check for that token, and if it's not present, the job status
-        # is still 'running' for the purpose of API clients.
+        # uploading to the bucket. After uploading has finished, we update the
+        # job metadata to indicate that it's complete.
+        # If 'completed' has not been set to True, the job status is still
+        # 'running' for the purpose of API clients.
         if job_status in {JobStatus.failed, JobStatus.dismissed, JobStatus.successful}:
-            workspace_dir = self.get_job_metadata(job_id)['workspace_dir']
-            if not (Path(workspace_dir) / 'job_complete_token').exists():
-                LOGGER.debug('Job finished but  not yet complete.')
-                job_status = JobStatus.running
-            else:
+            if self.get_job_metadata(job_id).get('completed', True):
                 LOGGER.debug(f'Job {job_id} and post processing completed.')
+            else:
+                LOGGER.debug('Job finished but post processing is not yet complete.')
+                job_status = JobStatus.running
 
         return {
             "type": "process",
             "identifier": job_id,
             "process_id": job_metadata['process_id'],
-            "location": job_metadata['results_path'],
+            "location": job_metadata.get('workspace_url', '?'),
             "created": self.get_job_submit_time(job_id),
             "started": self.get_job_start_time(job_id),
             "finished": self.get_job_end_time(job_id),
@@ -321,11 +419,7 @@ class SlurmManager(BaseManager):
         :returns: `tuple` of mimetype and raw output
         """
         job_info = self.get_job(job_id)
-        if job_info['status'] != JobStatus.successful.value:
-            return (None,)
-        with open(job_info["location"], "r") as file:
-            data = json.load(file)
-        return job_info["mimetype"], data
+        return job_info["mimetype"], {'workspace_url': job_info["location"]}
 
     def delete_job(self, job_id: str) -> bool:
         """
@@ -410,17 +504,17 @@ class SlurmManager(BaseManager):
 
         return job_id, mime_type, outputs, status, response_headers
 
-    def monitor_job_status(self, job_id, workspace_dir, process_output_func):
+    def monitor_job_status(self, job_id, workspace_dir, get_outputs_func):
         """Poll the slurm job until it completes, then perform final processing.
 
         Args:
             job_id: id of the slurm job
             workspace_dir: slurm job's workspace directory
-            process_output_func: the Process's output processing method that will
+            get_outputs_func: the Process's output processing method that will
                 be run after the job completes
 
         Returns:
-            None
+            dict of job outputs
         """
         try:
             # wait for the slurm job to complete
@@ -440,31 +534,17 @@ class SlurmManager(BaseManager):
                 LOGGER.error(f'Job {job_id} finished with non-zero exit code: {exit_code}')
 
         except Exception as err:
-            # TODO assess correct exception type and description to help users
-            # NOTE, the /results endpoint should return the error HTTP status
-            # for jobs that failed, the specification says that failing jobs
-            # must still be able to be retrieved with their error message
-            # intact, and the correct HTTP error status at the /results
-            # endpoint, even if the /result endpoint correctly returns the
-            # failure information (i.e. what one might assume is a 200
-            # response).
-            outputs = {
-                'type': 'process',
-                'code': 'InvalidParameterValue',
-                'description': f'Error executing process: {err}',
-                'workspace': workspace_dir
-            }
             LOGGER.exception(err)
 
         finally:
             try:
-                bucket_gs_url = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
-                results_json_path = Path(workspace_dir) / 'results.json'
-                with open(results_json_path, 'w') as results_json:
-                    results_json.write(json.dumps({'workspace_url': bucket_gs_url}))
-
-                # process outputs, should update results.json in the workspace
-                process_output_func(workspace_dir)
+                # get a dict of outputs (if any) from the workspace
+                # for the validate process, this includes the validation messages
+                # for the execute process, this is an empty dictionary
+                # include the workspace url in the outputs for all processes
+                # this is only used in sync mode to return results immediately
+                outputs = get_outputs_func(workspace_dir)
+                outputs['workspace_url'] = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
 
                 # Upload the workspace even if something went wrong, so that the
                 # user can access the slurm related files and any partial results.
@@ -475,11 +555,13 @@ class SlurmManager(BaseManager):
                 LOGGER.exception(err)
 
             finally:
-                LOGGER.debug('Creating job complete token')
-                # write token to workspace directory
-                # this marks that post processing is complete
-                with open(Path(workspace_dir) / 'job_complete_token', 'w') as file:
-                    file.write('job complete')
+                LOGGER.debug(f'Updating metadata for job {job_id} to indicate job is complete')
+                job_metadata = self.get_job_metadata(job_id)
+                job_metadata['completed'] = True
+                subprocess.run([
+                    'sacctmgr', 'modify', '--immediate', 'job', f'jobid={job_id}',
+                    'set', f"comment='{json.dumps(job_metadata)}'"], check=True)
+                return outputs
 
     def _execute_handler_sync(self, processor, data_dict, requested_outputs=None,
                               subscriber=None, requested_response=RequestedResponse.raw.value):
@@ -513,21 +595,16 @@ class SlurmManager(BaseManager):
                 'return to the user.')
             raise ex
 
-        # Monitor job in a separate thread until it completes
-        monitor_thread = threading.Thread(
-            target=self.monitor_job_status,
-            args=(job_id, workspace_dir, processor.process_output))
-        monitor_thread.start()
-        monitor_thread.join()
-        final_status = self.get_job_status(job_id)
-
-        with open(Path(workspace_dir) / 'results.json') as results_file:
-            outputs = json.load(results_file)
+        with ThreadPoolExecutor() as executor:
+            future = executor.submit(
+                self.monitor_job_status, job_id, workspace_dir, processor.get_outputs)
+            outputs = future.result()  # Blocks until thread is done
 
         if requested_response == RequestedResponse.document.value:
             outputs = {
                 'outputs': [outputs]
             }
+        final_status = self.get_job_status(job_id)
         return job_id, 'application/json', outputs, final_status
 
     def _execute_handler_async(self, processor, data_dict, requested_outputs=None,
@@ -561,7 +638,7 @@ class SlurmManager(BaseManager):
         # Monitor job in a separate thread, don't wait for it to complete
         monitor_thread = threading.Thread(
             target=self.monitor_job_status,
-            args=(job_id, workspace_dir, processor.process_output))
+            args=(job_id, workspace_dir, processor.get_outputs))
         monitor_thread.start()
 
         outputs = {
@@ -616,8 +693,9 @@ class SlurmManager(BaseManager):
 
         job_metadata = json.dumps({
             'workspace_dir': workspace_dir,
-            'results_path': str(Path(workspace_dir) / 'results.json'),
-            'process_id': processor.metadata['id']
+            'workspace_url': f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}',
+            'process_id': processor.metadata['id'],
+            'completed': False
         })
 
         # Submit the job

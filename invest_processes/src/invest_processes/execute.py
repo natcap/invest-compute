@@ -94,7 +94,7 @@ class ExecuteProcessor(BaseProcessor):
                 $MODEL_ID
             """)
 
-    def process_output(self, workspace_dir):
+    def get_outputs(self, workspace_dir):
         """Return outputs given a workspace from completed slurm job.
 
         Args:
@@ -103,7 +103,7 @@ class ExecuteProcessor(BaseProcessor):
         Returns:
             empty dict
         """
-        pass
+        return {}
 
     def __repr__(self):
         return f'<InVESTExecuteProcessor> {self.name}'

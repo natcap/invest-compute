@@ -99,7 +99,7 @@ class ValidateProcessor(BaseProcessor):
             invest validate --json {json_path} > {workspace_dir}/validation_results.json
             """)
 
-    def process_output(self, workspace_dir):
+    def get_outputs(self, workspace_dir):
         """Return outputs given a workspace from completed slurm job.
 
         Args:
@@ -111,20 +111,11 @@ class ValidateProcessor(BaseProcessor):
         output_filepath = Path(workspace_dir) / 'validation_results.json'
         with open(output_filepath) as file:
             json_output = json.loads(file.read())
-
-        with open(Path(workspace_dir) / 'results.json') as file:
-            results = json.load(file)
-
-        # add validation messages to the results json file
-        results['validation_results'] = []
-        for (input_ids, error_message) in json_output['validation_results']:
-            results['validation_results'].append({
-                'input_ids': input_ids,
-                'error_message': error_message
-            })
-        with open(Path(workspace_dir) / 'results.json', 'w') as file:
-            json.dump(results, file)
-        output_filepath.unlink()  # delete the original validation json file
+        # convert the list of lists to a list of maps
+        return {'validation_results': [{
+            'input_ids': input_ids,
+            'error_message': error_message
+        } for (input_ids, error_message) in json_output['validation_results']]}
 
     def __repr__(self):
         return f'<InVESTValidateProcessor> {self.name}'
