@@ -42,6 +42,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
 
         job_id = response.headers['Location'].split('/')[-1]
         job_response = json.loads(self.client.get(f'/jobs/{job_id}').get_data(as_text=True))
+        print(job_response)
         self.assertEqual(job_response['status'], 'successful')
 
         results_endpoint_response = json.loads(self.client.get(
@@ -64,8 +65,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job
                 'script.slurm',      # the slurm script sent to sbatch
-                'carbon_workspace',  # the invest model workspace directory
-                'results.json'       # json results file used by pygeoapi
+                'carbon_workspace'  # the invest model workspace directory
             }
         )
 
@@ -112,8 +112,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job
                 'script.slurm',      # the slurm script sent to sbatch
-                'carbon_workspace',  # the invest model workspace directory
-                'results.json'       # json results file used by pygeoapi
+                'carbon_workspace'  # the invest model workspace directory
             }
         )
 
@@ -162,8 +161,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job
                 'script.slurm',      # the slurm script sent to sbatch
-                'scenic_quality_workspace',  # the invest model workspace directory
-                'results.json'       # json results file used by pygeoapi
+                'scenic_quality_workspace'  # the invest model workspace directory
             }
         )
 
@@ -174,7 +172,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
             json={'inputs': {'datastack_url': ERROR_DATASTACK_URL}}
         )
         data = json.loads(response.get_data(as_text=True))
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 400)
         self.assertEqual(set(data.keys()), {'workspace_url'})
 
         local_dest_path = os.path.join(self.workspace_dir, 'results')
@@ -191,8 +189,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job
                 'script.slurm',      # the slurm script sent to sbatch
-                'carbon_workspace',  # the invest model workspace directory
-                'results.json'       # json results file used by pygeoapi
+                'carbon_workspace'  # the invest model workspace directory
             }
         )
 
@@ -238,7 +235,7 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'stdout.log',        # stdout from the slurm job
                 'stderr.log',        # stderr from the slurm job
                 'script.slurm',      # the slurm script sent to sbatch
-                'results.json'       # json results file used by pygeoapi
+                'validation_results.json'  # json output from the validate command
             }
         )
 
