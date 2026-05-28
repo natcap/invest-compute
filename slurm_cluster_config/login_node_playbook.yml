@@ -42,6 +42,13 @@
           - "--exclude=slurm_cluster_config"
           - "--exclude=tests"
 
+    - name: Move startup script to shared location
+      become: true
+      ansible.builtin.shell: |
+        mkdir /home/bin
+        mv /home/esoth_stanford_edu/invest-compute/invest_processes/startup_script.sh /home/bin
+        chmod +x /home/bin/startup_script.sh
+
     - name: Install and launch server
       args:
         chdir: invest-compute/invest_processes
@@ -49,13 +56,13 @@
       ansible.builtin.shell: |
         # install micromamba
         rm -f bin/micromamba
-        curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
-        eval "$(./bin/micromamba shell hook -s posix)"
+        curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj ~/bin/micromamba
+        eval "$(~/bin/micromamba shell hook -s posix)"
         micromamba --version
 
         # create and activate the environment
-        micromamba create -y -n env python=3.13 gdal natcap.invest==3.17.2
-        micromamba activate env
+        micromamba create -y -n server_env python=3.13
+        micromamba activate server_env
         pip install --no-cache-dir --only-binary=:all: pygeoapi
         pygeoapi --version
 

@@ -193,7 +193,7 @@ resource "google_api_gateway_api_config" "api_cfg" {
       path     = "spec.yml"
       contents = base64encode(
         templatefile(
-          "../../bundled-openapi.yml",
+          "../bundled-openapi.yml",
           { backend_url = google_cloud_run_v2_service.proxy.uri }
         )
       )

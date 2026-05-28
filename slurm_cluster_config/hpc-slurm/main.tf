@@ -58,18 +58,20 @@ module "homefs" {
   region            = var.region
   reserved_ip_range = module.private_service_access.reserved_ip_range
   zone              = var.zone
+  size_gb           = 2560
 }
 
 module "debug_nodeset" {
   source                  = "github.com/GoogleCloudPlatform/cluster-toolkit//community/modules/compute/schedmd-slurm-gcp-v6-nodeset?ref=v1.90.0"
   allow_automatic_updates = false
   labels                  = var.labels
-  machine_type            = "c2-standard-8"
+  machine_type            = "c2-standard-4"
   disk_type               = "pd-ssd"
   name                    = "debug_nodeset"
   node_count_dynamic_max  = 4
   project_id              = var.project_id
   region                  = var.region
+  startup_script          = "/home/bin/startup_script.sh"
   subnetwork_self_link    = module.network.subnetwork_self_link
   zone                    = var.zone
 }
@@ -87,12 +89,12 @@ module "compute_nodeset" {
   allow_automatic_updates = false
   bandwidth_tier          = "gvnic_enabled"
   labels                  = var.labels
-  machine_type            = "c2-standard-8"
+  machine_type            = "c2-standard-4"
   name                    = "compute_nodeset"
   node_count_dynamic_max  = 20
   project_id              = var.project_id
   region                  = var.region
-  startup_script          = "startup_script.sh"
+  startup_script          = "/home/bin/startup_script.sh"
   subnetwork_self_link    = module.network.subnetwork_self_link
   zone                    = var.zone
 }
@@ -128,7 +130,7 @@ module "slurm_login" {
   source                  = "github.com/GoogleCloudPlatform/cluster-toolkit//community/modules/scheduler/schedmd-slurm-gcp-v6-login?ref=v1.90.0"
   enable_login_public_ips = true
   labels                  = var.labels
-  machine_type            = "n2-standard-4"
+  machine_type            = "n2-standard-2"
   name_prefix             = "slurm_login"
   project_id              = var.project_id
   region                  = var.region
@@ -143,6 +145,7 @@ module "slurm_controller" {
   enable_controller_public_ips = true
   labels                       = var.labels
   login_nodes                  = flatten([module.slurm_login.login_nodes])
+  machine_type                 = "n2-standard-2"
   network_storage              = flatten([module.homefs.network_storage])
   nodeset                      = flatten([module.h3_partition.nodeset, flatten([module.compute_partition.nodeset, flatten([module.debug_partition.nodeset])])])
   nodeset_dyn                  = flatten([module.h3_partition.nodeset_dyn, flatten([module.compute_partition.nodeset_dyn, flatten([module.debug_partition.nodeset_dyn])])])
