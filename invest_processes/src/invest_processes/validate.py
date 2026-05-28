@@ -4,7 +4,6 @@ from pathlib import Path
 import textwrap
 import time
 
-from invest_processes.utils import download_and_extract_datastack
 from pygeoapi.process.base import BaseProcessor, ProcessorExecuteError
 
 LOGGER = logging.getLogger(__name__)

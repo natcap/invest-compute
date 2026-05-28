@@ -1,8 +1,8 @@
 import logging
+import multiprocessing
 from pathlib import Path
 import textwrap
 
-from invest_processes.utils import download_and_extract_datastack
 from pygeoapi.process.base import BaseProcessor, ProcessorExecuteError
 
 LOGGER = logging.getLogger(__name__)
@@ -46,6 +46,8 @@ PROCESS_METADATA = {
     }
 }
 
+CPUS_PER_TASK = 2  # number of cpus per task to submit to sbatch
+
 
 class ExecuteProcessor(BaseProcessor):
     """InVEST execute process"""
@@ -76,12 +78,15 @@ class ExecuteProcessor(BaseProcessor):
         json_path = f'{workspace_dir}/datastack/parameters.invest.json'
         return textwrap.dedent(f"""\
             #!/bin/sh
-            #SBATCH --time=10
+            #SBATCH --cpus-per-task={CPUS_PER_TASK}
 
             curl -o datastack.tgz "{datastack_url}"
             mkdir {workspace_dir}/datastack
             tar -xzvf datastack.tgz -C {workspace_dir}/datastack
             rm datastack.tgz
+
+            eval "$(~/bin/micromamba shell hook -s posix)"
+            micromamba activate invest_env
             MODEL_ID=$(python -c "from natcap.invest import datastack; print(datastack.extract_parameter_set('{json_path}').model_id)")
             invest --debug --taskgraph-log-level=DEBUG run \
                 --datastack {json_path} \

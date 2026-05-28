@@ -10,7 +10,6 @@ maintainers = [
 dynamic = ["version"] # the version is provided dynamically by setuptools_scm
 dependencies = [
     "flask",
-    "natcap.invest",
     "pygeoapi==0.23.0",  # https://github.com/geopython/pygeoapi/issues/2321
     "google-cloud-storage"
 ]
