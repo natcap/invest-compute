@@ -20,9 +20,12 @@ PROCESS_METADATA = {
     'jobControlOptions': ['async-execute', 'sync-execute'],
     'keywords': ['invest'],
     'inputs': {
-        'datastack_path': {
-            'title': 'Datastack path',
-            'description': 'The path to the datastack JSON file to validate',
+        'datastack_url': {
+            'title': 'Datastack URL',
+            'description': (
+                'The URL to a downloadable tar.gz archive of the datastack to run. '
+                'Must be formatted as an InVEST datastack containing a JSON parameters '
+                'file called parameters.invest.json, as well as all input data files.'),
             'schema': {
                 'type': 'string'
             },
@@ -56,7 +59,7 @@ PROCESS_METADATA = {
     },
     'example': {
         'inputs': {
-            'datastack_path': '/Users/emily/invest/data/Carbon/carbon_willamette.invs.json',
+            'datastack_url': 'https://raw.githubusercontent.com/natcap/invest-compute/refs/heads/main/tests/test_data/invest_carbon_datastack.tgz'
         }
     }
 }
