@@ -344,8 +344,8 @@ resource "google_compute_global_address" "default" {
 #
 # Job workspaces will be uploaded to this bucket. Users can download their
 # results and logs from the bucket.
-resource "google_storage_bucket" "invest-compute-workspaces" {
-  name          = "invest-compute-workspaces"
+resource "google_storage_bucket" "results_compute_naturalcapitalalliance_org" {
+  name          = "results.compute.naturalcapitalalliance.org"
   location      = "US"
   force_destroy = true
 
@@ -363,9 +363,18 @@ resource "google_storage_bucket" "invest-compute-workspaces" {
 # Make bucket public - anyone can view contents
 resource "google_storage_bucket_iam_member" "member" {
   provider = google
-  bucket   = google_storage_bucket.invest-compute-workspaces.name
+  bucket   = google_storage_bucket.results_compute_naturalcapitalalliance_org.name
   role     = "roles/storage.objectViewer"
   member   = "allUsers"
+}
+
+# Add
+resource "google_storage_bucket_object" "upload_directory" {
+  for_each = fileset("${path.module}/results_bucket/", "**/*")
+
+  name   = each.value
+  bucket = "results.compute.naturalcapitalalliance.org"
+  source = "${path.module}/results_bucket/${each.value}"
 }
 
 # -----------------------------------------------------------------------------
