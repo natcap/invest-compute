@@ -24,7 +24,7 @@ from pygeoapi.util import (
 )
 
 LOGGER = logging.getLogger(__name__)
-BUCKET_NAME = 'results.compute.naturalcapitalalliance.org'
+BUCKET_NAME = 'results_compute_naturalcapitalalliance_org'
 STORAGE_CLIENT = storage.Client()
 BUCKET = STORAGE_CLIENT.bucket(BUCKET_NAME)
 
