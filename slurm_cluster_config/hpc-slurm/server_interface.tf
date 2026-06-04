@@ -50,6 +50,7 @@ resource "google_cloud_run_v2_service" "proxy" {
   location = var.region
   ingress  = "INGRESS_TRAFFIC_ALL" # Accessible from Gateway (Public)
   deletion_protection = false
+  depends_on = [module.network]  # wait until the network infrastructure exists
 
   template {
     service_account = google_service_account.cloud_run_sa.email
@@ -229,7 +230,8 @@ resource "google_project_service" "api_gateway_service" {
   disable_on_destroy = false
 
   # Wait for the timer to give time for the service to appear
-  depends_on = [time_sleep.wait_for_api_service_propagation]
+  # Force enablement to wait until the configuration is entirely ready
+  depends_on = [time_sleep.wait_for_api_service_propagation, google_api_gateway_api_config.api_cfg]
 }
 
 # Create the API Gateway
@@ -260,10 +262,11 @@ locals {
   }
 }
 
-
+# API keys are soft-deleted and cannot be re-created with the same name for
+# some time after deletion, so give them an unique name with a random id
 resource "google_apikeys_key" "api_keys" {
   for_each     = local.api_clients
-  name         = each.key
+  name         = "${each.key}-${random_id.suffix.hex}"
   display_name = each.value
   project      = var.project_id
 
@@ -345,7 +348,7 @@ resource "google_compute_global_address" "default" {
 # Job workspaces will be uploaded to this bucket. Users can download their
 # results and logs from the bucket.
 resource "google_storage_bucket" "results_compute_naturalcapitalalliance_org" {
-  name          = "results.compute.naturalcapitalalliance.org"
+  name          = "results_compute_naturalcapitalalliance_org"
   location      = "US"
   force_destroy = true
 
@@ -373,7 +376,7 @@ resource "google_storage_bucket_object" "upload_directory" {
   for_each = fileset("${path.module}/results_bucket/", "**/*")
 
   name   = each.value
-  bucket = "results.compute.naturalcapitalalliance.org"
+  bucket = google_storage_bucket.results_compute_naturalcapitalalliance_org.name
   source = "${path.module}/results_bucket/${each.value}"
 }
 
@@ -401,8 +404,14 @@ variable "github_repo" {
 }
 
 # Create Workload Identity Pool and Provider to authenticate GHA workflows
+resource "random_id" "suffix" {
+  byte_length = 4
+}
+
+# Workload Identity Pools are soft-deleted and cannot be re-created with the
+# same name for some time after deletion, so give them an unique name with a random id
 resource "google_iam_workload_identity_pool" "github_actions" {
-  workload_identity_pool_id = "github-actions-pool"
+  workload_identity_pool_id = "github-actions-pool-${random_id.suffix.hex}"
 }
 
 resource "google_iam_workload_identity_pool_provider" "github_actions" {
@@ -444,4 +453,64 @@ output "github_actions_service_account_email" {
 output "load_balancer_ip" {
   description = "The public IP address of the global load balancer"
   value       = google_compute_global_forwarding_rule.default.ip_address
+}
+
+
+# -----------------------------------------------------------------------------
+# Client datastack bucket
+#
+# Clients with access can upload their datastack to this bucket to make it
+# available to the invest-compute server.
+resource "google_storage_bucket" "invest_compute_client_datastacks" {
+  name          = "invest_compute_client_datastacks"
+  location      = "US"
+  force_destroy = true
+
+  # delete contents older than 3 days
+  lifecycle_rule {
+    condition {
+      age = 3
+    }
+    action {
+      type = "Delete"
+    }
+  }
+}
+
+# Make bucket public - anyone can view contents
+resource "google_storage_bucket_iam_member" "client_datastacks_member" {
+  provider = google
+  bucket   = google_storage_bucket.invest_compute_client_datastacks.name
+  role     = "roles/storage.objectViewer"
+  member   = "allUsers"
+}
+
+
+# -----------------------------------------------------------------------------
+# invest compute plugin testing service account
+# allows uploading to client datastacks bucket
+
+# Create the Service Account
+resource "google_service_account" "plugin_testing_uploader" {
+  account_id   = "plugin-testing-uploader"
+  project      = var.project_id
+}
+
+# Bind the IAM role to the client datastacks bucket
+resource "google_storage_bucket_iam_member" "bucket_upload_access" {
+  bucket = google_storage_bucket.invest_compute_client_datastacks.name
+  role   = "roles/storage.objectCreator"
+  member = "serviceAccount:${google_service_account.plugin_testing_uploader.email}"
+}
+
+# Generate a JSON key file
+resource "google_service_account_key" "plugin_testing_uploader_key" {
+  service_account_id = google_service_account.plugin_testing_uploader.name
+  public_key_type    = "TYPE_X509_PEM_FILE"
+}
+
+output "plugin_testing_service_account_json" {
+  description = "JSON key for service account needed for invest-compute plugin testing"
+  value       = base64decode(google_service_account_key.plugin_testing_uploader_key.private_key)
+  sensitive   = true
 }
