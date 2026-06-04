@@ -48,8 +48,6 @@ PROCESS_METADATA = {
     }
 }
 
-CPUS_PER_TASK = 2  # number of cpus per task to submit to sbatch
-
 
 class ExecuteProcessor(BaseProcessor):
     """InVEST execute process"""
@@ -80,7 +78,7 @@ class ExecuteProcessor(BaseProcessor):
         json_path = f'{workspace_dir}/datastack/parameters.invest.json'
         return textwrap.dedent(f"""\
             #!/bin/sh
-            #SBATCH --cpus-per-task={CPUS_PER_TASK}
+            #SBATCH --exclusive
 
             curl -o datastack.tgz "{datastack_url}"
             mkdir {workspace_dir}/datastack
