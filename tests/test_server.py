@@ -6,7 +6,6 @@ import tempfile
 import time
 import unittest
 
-from invest_processes.utils import download_and_extract_datastack
 from pygeoapi import flask_app
 
 CARBON_DATASTACK_URL = 'https://raw.githubusercontent.com/natcap/invest-compute/refs/heads/main/tests/test_data/invest_carbon_datastack.tgz'
@@ -238,24 +237,3 @@ class PyGeoAPIServerTests(unittest.TestCase):
                 'validation_results.json'  # json output from the validate command
             }
         )
-
-
-class UtilsTests(unittest.TestCase):
-
-    def setUp(self):
-        self.workspace_dir = tempfile.mkdtemp()
-
-    def tearDown(self):
-        shutil.rmtree(self.workspace_dir)
-
-    def testDownloadAndExtractDatastack(self):
-        """Test utility function for downloading and extracting a datastack."""
-        json_path, model_id = download_and_extract_datastack(
-            CARBON_DATASTACK_URL, self.workspace_dir)
-        self.assertEqual(
-            set(os.listdir(self.workspace_dir)),
-            {'data', 'log.txt', 'parameters.invest.json'}
-        )
-        self.assertEqual(json_path, os.path.join(
-            self.workspace_dir, 'parameters.invest.json'))
-        self.assertEqual(model_id, 'carbon')

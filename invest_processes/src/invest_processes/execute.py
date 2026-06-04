@@ -2,7 +2,6 @@ import logging
 from pathlib import Path
 import textwrap
 
-from invest_processes.utils import download_and_extract_datastack
 from pygeoapi.process.base import BaseProcessor, ProcessorExecuteError
 
 LOGGER = logging.getLogger(__name__)
@@ -19,9 +18,12 @@ PROCESS_METADATA = {
     'jobControlOptions': ['async-execute'],
     'keywords': ['invest'],
     'inputs': {
-        'datastack_path': {
-            'title': 'Datastack path',
-            'description': 'The path to the datastack JSON file to execute',
+        'datastack_url': {
+            'title': 'Datastack URL',
+            'description': (
+                'The URL to a downloadable tar.gz archive of the datastack to run. '
+                'Must be formatted as an InVEST datastack containing a JSON parameters '
+                'file called parameters.invest.json, as well as all input data files.'),
             'schema': {
                 'type': 'string'
             },
@@ -41,7 +43,7 @@ PROCESS_METADATA = {
     },
     'example': {
         'inputs': {
-            'datastack_path': '/Users/emily/invest/data/Carbon/carbon_willamette.invs.json',
+            'datastack_url': 'https://raw.githubusercontent.com/natcap/invest-compute/refs/heads/main/tests/test_data/invest_carbon_datastack.tgz'
         }
     }
 }
@@ -76,11 +78,15 @@ class ExecuteProcessor(BaseProcessor):
         json_path = f'{workspace_dir}/datastack/parameters.invest.json'
         return textwrap.dedent(f"""\
             #!/bin/sh
+            #SBATCH --exclusive
 
             curl -o datastack.tgz "{datastack_url}"
             mkdir {workspace_dir}/datastack
             tar -xzvf datastack.tgz -C {workspace_dir}/datastack
             rm datastack.tgz
+
+            eval "$(~/bin/micromamba shell hook -s posix)"
+            micromamba activate invest_env
             MODEL_ID=$(python -c "from natcap.invest import datastack; print(datastack.extract_parameter_set('{json_path}').model_id)")
             invest --debug --taskgraph-log-level=DEBUG run \
                 --datastack {json_path} \
