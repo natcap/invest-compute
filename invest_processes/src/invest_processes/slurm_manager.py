@@ -714,7 +714,7 @@ class SlurmManager(BaseManager):
             LOGGER.info(f'stdout from sbatch: {result.stdout}')
 
         except subprocess.CalledProcessError as e:
-            raise RuntimeError('Error when submitting slurm job') from e
+            raise RuntimeError(f'Error when submitting slurm job: {e.stderr}') from e
 
         job_id = result.stdout.strip()
         LOGGER.info(f"Job submitted successfully with ID: {job_id}")
