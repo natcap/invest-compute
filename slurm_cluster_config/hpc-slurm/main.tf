@@ -58,7 +58,8 @@ module "homefs" {
   region            = var.region
   reserved_ip_range = module.private_service_access.reserved_ip_range
   zone              = var.zone
-  size_gb           = 2560
+  filestore_tier    = "BASIC_HDD"
+  size_gb           = 1000
 }
 
 module "debug_nodeset" {
