@@ -98,6 +98,8 @@ class PyGeoAPIServerTests(unittest.TestCase):
         results_response = json.loads(self.client.get(
             f'/jobs/{execution_response["jobID"]}/results?f=json').get_data(
             as_text=True))
+        self.assertTrue(results_response['bucket_url'].startswith(
+            'http://results.compute.naturalcapitalalliance.org/?prefix=slurm_wksp_'))
         local_dest_path = os.path.join(self.workspace_dir, 'results')
         os.mkdir(local_dest_path)
         subprocess.run([
