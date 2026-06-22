@@ -348,7 +348,7 @@ resource "google_compute_global_address" "default" {
 # Job workspaces will be uploaded to this bucket. Users can download their
 # results and logs from the bucket.
 resource "google_storage_bucket" "results_compute_naturalcapitalalliance_org" {
-  name          = "results_compute_naturalcapitalalliance_org"
+  name          = "results.compute.naturalcapitalalliance.org"
   location      = "US"
   force_destroy = true
 
@@ -361,6 +361,10 @@ resource "google_storage_bucket" "results_compute_naturalcapitalalliance_org" {
       type = "Delete"
     }
   }
+
+  website {
+    main_page_suffix = "index.html"
+  }
 }
 
 # Make bucket public - anyone can view contents
@@ -371,13 +375,28 @@ resource "google_storage_bucket_iam_member" "member" {
   member   = "allUsers"
 }
 
-# Add
-resource "google_storage_bucket_object" "upload_directory" {
-  for_each = fileset("${path.module}/results_bucket/", "**/*")
+resource "google_storage_bucket_object" "upload_js" {
+  name           = "bucketlist.js"
+  bucket         = google_storage_bucket.results_compute_naturalcapitalalliance_org.name
+  source         = "${path.module}/results_bucket/bucketlist.js"
+  content_type   = "application/javascript"
+  source_md5hash = filemd5("${path.module}/results_bucket/bucketlist.js")
+}
 
-  name   = each.value
-  bucket = google_storage_bucket.results_compute_naturalcapitalalliance_org.name
-  source = "${path.module}/results_bucket/${each.value}"
+resource "google_storage_bucket_object" "upload_html" {
+  name           = "index.html"
+  bucket         = google_storage_bucket.results_compute_naturalcapitalalliance_org.name
+  source         = "${path.module}/results_bucket/index.html"
+  content_type   = "text/html"
+  source_md5hash = filemd5("${path.module}/results_bucket/index.html")
+}
+
+resource "google_storage_bucket_object" "upload_txt" {
+  name           = "robots.txt"
+  bucket         = google_storage_bucket.results_compute_naturalcapitalalliance_org.name
+  source         = "${path.module}/results_bucket/robots.txt"
+  content_type   = "text/plain"
+  source_md5hash = filemd5("${path.module}/results_bucket/robots.txt")
 }
 
 # -----------------------------------------------------------------------------
