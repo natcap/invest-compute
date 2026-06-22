@@ -421,7 +421,11 @@ class SlurmManager(BaseManager):
         :returns: `tuple` of mimetype and raw output
         """
         job_info = self.get_job(job_id)
-        return job_info["mimetype"], {'workspace_url': job_info["location"]}
+        workspace_name = job_info['location'].split('/')[-1]
+        return job_info['mimetype'], {
+            'workspace_url': job_info['location'],
+            'bucket_url': f'http://results.compute.naturalcapitalalliance.org/?prefix={workspace_name}/'
+        }
 
     def delete_job(self, job_id: str) -> bool:
         """
