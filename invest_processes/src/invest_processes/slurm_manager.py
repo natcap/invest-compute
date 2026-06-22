@@ -547,10 +547,11 @@ class SlurmManager(BaseManager):
                 # get a dict of outputs (if any) from the workspace
                 # for the validate process, this includes the validation messages
                 # for the execute process, this is an empty dictionary
+                outputs = get_outputs_func(workspace_dir)
                 # include the workspace url in the outputs for all processes
                 # this is only used in sync mode to return results immediately
-                outputs = get_outputs_func(workspace_dir)
-                outputs['workspace_url'] = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
+                _, default_outputs = self.get_job_result(job_id)
+                outputs.update(default_outputs)
 
                 # Upload the workspace even if something went wrong, so that the
                 # user can access the slurm related files and any partial results.
