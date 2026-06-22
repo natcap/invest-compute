@@ -2,26 +2,12 @@
 var CONFIG = {
   bucket_url: "https://www.googleapis.com/storage/v1/b/results.compute.naturalcapitalalliance.org/o",
   public_url: "https://storage.googleapis.com/results.compute.naturalcapitalalliance.org",
-  exclude_files: [],//["index.html", "bucketlist.js", "readme.md" , "robots.txt"],
-  sort_option: "A2Z", // 'A2Z', 'Z2A', 'BIG2SMALL', 'SMALL2BIG'
+  exclude_files: ["index.html", "bucketlist.js", "readme.md" , "robots.txt"],
   root_dir: ""
 }
 
 if (typeof AUTO_TITLE !== 'undefined' && AUTO_TITLE === true) {
   document.title = location.host;
-}
-
-function sortFilesFunction(a, b) {
-  switch (CONFIG.sort_option) {
-    case "A2Z":
-      return a.name.localeCompare(b.name);
-    case "Z2A":
-      return a.name.localeCompare(b.name) * -1;
-    case "BIG2SMALL":
-      return a.size / 1 < b.size / 1 ? 1 : -1;
-    case "SMALL2BIG":
-      return a.size / 1 > b.size / 1 ? 1 : -1;
-  }
 }
 
 function padRight(padString, length) {
@@ -151,11 +137,9 @@ function prepareTable(info, sortFunc) {
 
   // files or 'items' have various properties and no obvious default ordering
   if (files) {
-    if (CONFIG.sort_option !== 'DEFAULT') {
-      let sortedFiles = files;
-      sortedFiles.sort(sortFilesFunction);
-      files = sortedFiles;
-    }
+    let sortedFiles = files;
+    sortedFiles.sort((a, b) => a.name.localeCompare(b.name));
+    files = sortedFiles;
     files.forEach(function(file) {
       let item = {
         Key: file.name,
