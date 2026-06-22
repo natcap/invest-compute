@@ -24,7 +24,7 @@ from pygeoapi.util import (
 )
 
 LOGGER = logging.getLogger(__name__)
-BUCKET_NAME = 'results_compute_naturalcapitalalliance_org'
+BUCKET_NAME = 'results.compute.naturalcapitalalliance.org'
 STORAGE_CLIENT = storage.Client()
 BUCKET = STORAGE_CLIENT.bucket(BUCKET_NAME)
 
@@ -205,6 +205,8 @@ class SlurmManager(BaseManager):
 
         jobs = []
         for line in output_lines:
+            if line == '':
+                continue
             job_id, job_status, submit_time, start_time, end_time = line.split()
             if status and job_status != status:
                 continue
