@@ -31,32 +31,6 @@ BUCKET = STORAGE_CLIENT.bucket(BUCKET_NAME)
 WORKSPACE_ROOT = 'workspaces'
 os.makedirs(WORKSPACE_ROOT, exist_ok=True)
 
-
-def convert_job_status(status):
-
-    if status.startswith('CANCELLED'):
-        status = 'CANCELLED'
-
-    # Map slurm job statuses to OGC Process job statuses
-    # According to the Processes standard, job statuses may be
-    # 'accepted', 'running', 'successful', 'failed', or 'dismissed'.
-    # Slurm statuses are as defined here: https://slurm.schedmd.com/job_state_codes.html
-    JOB_STATUS_MAP = {
-        'BOOT_FAIL': JobStatus.failed,      # terminated due to node boot failure
-        'CANCELLED': JobStatus.dismissed,   # cancelled by user or administrator
-        'COMPLETED': JobStatus.successful,  # completed execution successfully; finished with an exit code of zero on all nodes
-        'DEADLINE': JobStatus.failed,       # terminated due to reaching the latest start time that allows the job to reach its deadline given its TimeLimit
-        'FAILED': JobStatus.failed,         # completed execution unsuccessfully; non-zero exit code or other failure condition
-        'NODE_FAIL': JobStatus.failed,      # terminated due to node failure
-        'OUT_OF_MEMORY': JobStatus.failed,  # experienced out of memory error
-        'PENDING': JobStatus.accepted,      # queued and waiting for initiation; will typically have a reason code specifying why it has not yet started
-        'PREEMPTED': JobStatus.dismissed,   # terminated due to preemption; may transition to another state based on the configured PreemptMode and job characteristics
-        'RUNNING': JobStatus.running,       # allocated resources and executing
-        'SUSPENDED': JobStatus.dismissed,   # allocated resources but execution suspended, such as from preemption or a direct request from an authorized user
-        'TIMEOUT': JobStatus.failed         # terminated due to reaching the time limit, such as those configured in slurm.conf or specified for the individual job
-    }
-    return JOB_STATUS_MAP[status]
-
 # monkeypatch pygeoapi.api.processes.get_job_result
 # to enable returning custom error details
 def get_job_result(api, request, job_id):
@@ -151,12 +125,13 @@ def upload_directory_to_bucket(dir_path):
     Returns:
         None
     """
+    LOGGER.debug(f'uploading {dir_path}')
     dir_path = Path(dir_path)
     for path in dir_path.rglob('*'):
         if not path.is_file():
             continue
         rel_path = str(path.relative_to(dir_path.parent))
-        print('uploading', rel_path)
+        LOGGER.debug(f'uploading {rel_path}')
         BUCKET.blob(rel_path).upload_from_filename(path)
         LOGGER.debug(f'Uploaded {path} to gs://{BUCKET_NAME}/{rel_path}')
 
@@ -207,7 +182,8 @@ class SlurmManager(BaseManager):
         for line in output_lines:
             if line == '':
                 continue
-            job_id, job_status, submit_time, start_time, end_time = line.split()
+            job_id, _, submit_time, start_time, end_time = line.split()
+            job_status = self.get_job_status(job_id)
             if status and job_status != status:
                 continue
             # append Z (UTC) because pygeoapi requires the timezone.
@@ -226,7 +202,7 @@ class SlurmManager(BaseManager):
                 "started": start_time,
                 "finished": end_time,
                 "updated": submit_time,
-                "status": convert_job_status(job_status).value,
+                "status": job_status.value,
                 "mimetype": "application/json",
                 "message": "",
                 "progress": -1
@@ -262,9 +238,44 @@ class SlurmManager(BaseManager):
 
         raise NotImplementedError()
 
+    def get_raw_job_status(self, job_id):
+        """Get a job's status, not considering whether it has finished uploading."""
+
+        status = self.get_sacct_data(job_id, 'State')
+        if not status:
+            return None
+
+        if status.startswith('CANCELLED'):
+            status = 'CANCELLED'
+
+        # Map slurm job statuses to OGC Process job statuses
+        # According to the Processes standard, job statuses may be
+        # 'accepted', 'running', 'successful', 'failed', or 'dismissed'.
+        # Slurm statuses are as defined here: https://slurm.schedmd.com/job_state_codes.html
+        job_status_map = {
+            'BOOT_FAIL': JobStatus.failed,      # terminated due to node boot failure
+            'CANCELLED': JobStatus.dismissed,   # cancelled by user or administrator
+            'COMPLETED': JobStatus.successful,  # completed execution successfully; finished with an exit code of zero on all nodes
+            'DEADLINE': JobStatus.failed,       # terminated due to reaching the latest start time that allows the job to reach its deadline given its TimeLimit
+            'FAILED': JobStatus.failed,         # completed execution unsuccessfully; non-zero exit code or other failure condition
+            'NODE_FAIL': JobStatus.failed,      # terminated due to node failure
+            'OUT_OF_MEMORY': JobStatus.failed,  # experienced out of memory error
+            'PENDING': JobStatus.accepted,      # queued and waiting for initiation; will typically have a reason code specifying why it has not yet started
+            'PREEMPTED': JobStatus.dismissed,   # terminated due to preemption; may transition to another state based on the configured PreemptMode and job characteristics
+            'RUNNING': JobStatus.running,       # allocated resources and executing
+            'SUSPENDED': JobStatus.dismissed,   # allocated resources but execution suspended, such as from preemption or a direct request from an authorized user
+            'TIMEOUT': JobStatus.failed         # terminated due to reaching the time limit, such as those configured in slurm.conf or specified for the individual job
+        }
+        status = job_status_map[status]
+        LOGGER.debug(f'Raw status of job {job_id}: {status}')
+        return status
+
     def get_job_status(self, job_id):
         """
         Get a job's status.
+
+        Considers both whether the underlying slurm job has finished, and
+        whether the job results have finished uploading to the bucket.
 
         :param job_id: job identifier
 
@@ -272,11 +283,21 @@ class SlurmManager(BaseManager):
                                   known job
         :returns: `dict` of job result
         """
-        status = self.get_sacct_data(job_id, 'State')
-        LOGGER.debug(f'Status of slurm job {job_id}: {status}')
-        if not status:
-            return None
-        return convert_job_status(status)
+        status = self.get_raw_job_status(job_id)
+
+        # After the job finishes, we need to wait for the workspace to finish
+        # uploading to the bucket. After uploading has finished, we update the
+        # job metadata to indicate that it's complete.
+        # If 'completed' has not been set to True, the job status is still
+        # 'running' for the purpose of API clients.
+        if status in {JobStatus.failed, JobStatus.dismissed, JobStatus.successful}:
+            if self.get_job_metadata(job_id).get('completed', True):
+                LOGGER.debug(f'Job {job_id} and post processing completed.')
+            else:
+                LOGGER.debug('Job finished but post processing is not yet complete.')
+                status = JobStatus.running
+        LOGGER.debug(f'Status of job {job_id}: {status}')
+        return status
 
     def get_scontrol_data(self, job_id, field_name):
         """Get a slurm job data field value using the scontrol command.
@@ -380,18 +401,6 @@ class SlurmManager(BaseManager):
         """
         job_metadata = self.get_job_metadata(job_id)
         job_status = self.get_job_status(job_id)
-
-        # After the job finishes, we need to wait for the workspace to finish
-        # uploading to the bucket. After uploading has finished, we update the
-        # job metadata to indicate that it's complete.
-        # If 'completed' has not been set to True, the job status is still
-        # 'running' for the purpose of API clients.
-        if job_status in {JobStatus.failed, JobStatus.dismissed, JobStatus.successful}:
-            if self.get_job_metadata(job_id).get('completed', True):
-                LOGGER.debug(f'Job {job_id} and post processing completed.')
-            else:
-                LOGGER.debug('Job finished but post processing is not yet complete.')
-                job_status = JobStatus.running
 
         return {
             "type": "process",
@@ -526,8 +535,7 @@ class SlurmManager(BaseManager):
             # wait for the slurm job to complete
             while True:
                 # check the 'state' string from the job data in sacct
-                status = self.get_job_status(job_id)
-                LOGGER.debug(f'Status of slurm job {job_id}: {status}')
+                status = self.get_raw_job_status(job_id)
                 if status in {JobStatus.successful, JobStatus.failed, JobStatus.dismissed}:
                     break
                 time.sleep(5)
@@ -548,10 +556,13 @@ class SlurmManager(BaseManager):
                 # for the validate process, this includes the validation messages
                 # for the execute process, this is an empty dictionary
                 outputs = get_outputs_func(workspace_dir)
+                LOGGER.info('outputs:')
+                LOGGER.info(outputs)
                 # include the workspace url in the outputs for all processes
                 # this is only used in sync mode to return results immediately
                 _, default_outputs = self.get_job_result(job_id)
                 outputs.update(default_outputs)
+                LOGGER.info(outputs)
 
                 # Upload the workspace even if something went wrong, so that the
                 # user can access the slurm related files and any partial results.
