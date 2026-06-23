@@ -42,12 +42,6 @@
           - "--exclude=slurm_cluster_config"
           - "--exclude=tests"
 
-    - name: Move startup script to shared location
-      become: true
-      ansible.builtin.shell: |
-        mkdir /home/bin
-        mv /home/esoth_stanford_edu/invest-compute/invest_processes/startup_script.sh /home/bin
-        chmod +x /home/bin/startup_script.sh
 
     - name: Install and launch server
       args:
@@ -55,12 +49,24 @@
         executable: /bin/bash # Ensure bash is used for shell hooks
       ansible.builtin.shell: |
         # install micromamba
-        rm -f bin/micromamba
-        curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj ~/bin/micromamba
+        rm -f ~/bin/micromamba
+        curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xj -C ~ bin/micromamba
         eval "$(~/bin/micromamba shell hook -s posix)"
         micromamba --version
 
-        # create and activate the environment
+        # create the environment for running invest
+        # this is created on the filestore so it is shared among all nodes
+        # this saves time on node startup - nodes do not have to create their own envs
+        source /opt/rh/gcc-toolset-12/enable
+        micromamba create -y -n invest_env python=3.13 gdal
+        micromamba activate invest_env
+        pip install setuptools setuptools_scm build cython babel
+        pip install --no-build-isolation git+https://github.com/natcap/pygeoprocessing.git
+        pip install --no-build-isolation git+https://github.com/emlys/invest.git@bugfix/2572
+        invest --version
+        micromamba deactivate
+
+        # create and activate the server environment
         micromamba create -y -n server_env python=3.13
         micromamba activate server_env
         pip install --no-cache-dir --only-binary=:all: pygeoapi

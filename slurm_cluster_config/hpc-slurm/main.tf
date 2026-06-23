@@ -58,7 +58,8 @@ module "homefs" {
   region            = var.region
   reserved_ip_range = module.private_service_access.reserved_ip_range
   zone              = var.zone
-  size_gb           = 2560
+  filestore_tier    = "BASIC_HDD"
+  size_gb           = 1024
 }
 
 module "debug_nodeset" {
@@ -71,7 +72,6 @@ module "debug_nodeset" {
   node_count_dynamic_max  = 4
   project_id              = var.project_id
   region                  = var.region
-  startup_script          = "/home/bin/startup_script.sh"
   subnetwork_self_link    = module.network.subnetwork_self_link
   zone                    = var.zone
 }
@@ -94,7 +94,6 @@ module "compute_nodeset" {
   node_count_dynamic_max  = 20
   project_id              = var.project_id
   region                  = var.region
-  startup_script          = "/home/bin/startup_script.sh"
   subnetwork_self_link    = module.network.subnetwork_self_link
   zone                    = var.zone
 }

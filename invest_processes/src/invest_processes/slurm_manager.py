@@ -24,7 +24,7 @@ from pygeoapi.util import (
 )
 
 LOGGER = logging.getLogger(__name__)
-BUCKET_NAME = 'invest-compute-workspaces'
+BUCKET_NAME = 'results.compute.naturalcapitalalliance.org'
 STORAGE_CLIENT = storage.Client()
 BUCKET = STORAGE_CLIENT.bucket(BUCKET_NAME)
 
@@ -205,6 +205,8 @@ class SlurmManager(BaseManager):
 
         jobs = []
         for line in output_lines:
+            if line == '':
+                continue
             job_id, job_status, submit_time, start_time, end_time = line.split()
             if status and job_status != status:
                 continue
@@ -419,7 +421,11 @@ class SlurmManager(BaseManager):
         :returns: `tuple` of mimetype and raw output
         """
         job_info = self.get_job(job_id)
-        return job_info["mimetype"], {'workspace_url': job_info["location"]}
+        workspace_name = job_info['location'].split('/')[-1]
+        return job_info['mimetype'], {
+            'workspace_url': job_info['location'],
+            'bucket_url': f'http://results.compute.naturalcapitalalliance.org/?prefix={workspace_name}/'
+        }
 
     def delete_job(self, job_id: str) -> bool:
         """
@@ -541,10 +547,11 @@ class SlurmManager(BaseManager):
                 # get a dict of outputs (if any) from the workspace
                 # for the validate process, this includes the validation messages
                 # for the execute process, this is an empty dictionary
+                outputs = get_outputs_func(workspace_dir)
                 # include the workspace url in the outputs for all processes
                 # this is only used in sync mode to return results immediately
-                outputs = get_outputs_func(workspace_dir)
-                outputs['workspace_url'] = f'gs://{BUCKET_NAME}/{Path(workspace_dir).name}'
+                _, default_outputs = self.get_job_result(job_id)
+                outputs.update(default_outputs)
 
                 # Upload the workspace even if something went wrong, so that the
                 # user can access the slurm related files and any partial results.
