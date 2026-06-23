@@ -37,7 +37,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
         execution_response = json.loads(response.get_data(as_text=True))
         # in sync mode with default response type ("raw"), the process
         # outputs should be returned directly in the json response
-        self.assertEqual(set(execution_response.keys()), {'workspace_url'})
+        self.assertEqual(
+            set(execution_response.keys()),
+            {'bucket_url', 'workspace_url'})
 
         job_id = response.headers['Location'].split('/')[-1]
         job_response = json.loads(self.client.get(f'/jobs/{job_id}').get_data(as_text=True))
@@ -174,7 +176,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
         )
         data = json.loads(response.get_data(as_text=True))
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(set(data.keys()), {'workspace_url'})
+        self.assertEqual(
+            set(data.keys()),
+            {'bucket_url', 'workspace_url'})
 
         local_dest_path = os.path.join(self.workspace_dir, 'results')
         os.mkdir(local_dest_path)
@@ -213,8 +217,9 @@ class PyGeoAPIServerTests(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 200)
         data = json.loads(response.get_data(as_text=True))
-        self.assertEqual(set(data.keys()),
-                         {'workspace_url', 'validation_results'})
+        self.assertEqual(
+            set(data.keys()),
+            {'bucket_url', 'workspace_url', 'validation_results'})
         self.assertEqual(
             data['validation_results'],
             [{
